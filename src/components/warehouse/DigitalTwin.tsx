@@ -25,9 +25,9 @@ function Rack({ x, yStart, yEnd, id }: { x: number; yStart: number; yEnd: number
   const length = (yEnd - yStart + 1) * CELL_SIZE_METERS
   const [worldX, , worldZ] = toWorld({ x: x + 0.5, y: yStart + (yEnd - yStart) / 2 })
   return <group position={[worldX, 2.15, worldZ]}>
-    <mesh castShadow receiveShadow><boxGeometry args={[2 * CELL_SIZE_METERS, 4.2, length]} /><meshStandardMaterial color="#16436f" metalness={0.56} roughness={0.34} /></mesh>
-    {[-1.3, 0, 1.3].map((height) => <group key={height}><mesh position={[0, height, 0]}><boxGeometry args={[2 * CELL_SIZE_METERS + 0.1, 0.14, length + 0.1]} /><meshStandardMaterial color="#2d8ac5" metalness={0.72} roughness={0.24} /></mesh>{Array.from({ length: 5 }, (_, index) => <mesh key={index} position={[(index % 2 ? -0.52 : 0.52), height + 0.28, -length / 2 + 1.3 + Math.floor(index / 2) * 2.5]} castShadow><boxGeometry args={[0.72, 0.42, 1.6]} /><meshStandardMaterial color={index % 3 === 0 ? '#de8751' : '#c99655'} roughness={0.65} /></mesh>)}</group>)}
-    <Text position={[0, 2.32, -length / 2 - 0.35]} color="#d6efff" fontSize={0.38} anchorX="center">{id.replace('R', 'A')}</Text>
+    {[-1.38, 1.38].flatMap((beamX) => [-length / 2 + 0.2, length / 2 - 0.2].map((beamZ) => <mesh key={`${beamX}-${beamZ}`} position={[beamX, 0, beamZ]} castShadow><boxGeometry args={[0.16, 4.5, 0.16]} /><meshStandardMaterial color="#17649a" metalness={0.72} roughness={0.25} /></mesh>))}
+    {[-1.55, -0.2, 1.15].map((height) => <group key={height}><mesh position={[0, height, 0]}><boxGeometry args={[2.92, 0.13, length]} /><meshStandardMaterial color="#227cb7" metalness={0.7} roughness={0.26} /></mesh>{Array.from({ length: 10 }, (_, index) => <mesh key={index} position={[index % 2 ? -0.6 : 0.6, height + 0.31, -length / 2 + 0.85 + Math.floor(index / 2) * 2.7]} castShadow><boxGeometry args={[0.86, 0.5, 1.36]} /><meshStandardMaterial color={(index + Math.round(height * 2)) % 4 === 0 ? '#e27a4e' : '#c99354'} roughness={0.68} /></mesh>)}</group>)}
+    <Text position={[0, 2.38, -length / 2 - 0.55]} color="#d6efff" fontSize={0.42} anchorX="center">{id.replace('R', 'A')}</Text>
   </group>
 }
 
@@ -111,7 +111,7 @@ function WarehouseScene({ products, layout, activeEvent, playing, playbackSpeed,
 }
 
 export function DigitalTwin(props: DigitalTwinProps) {
-  return <Canvas shadows camera={{ position: [35, 37, 32], fov: 43 }} dpr={[1, 1.5]} gl={{ toneMappingExposure: 1.28 }}>
+  return <Canvas shadows camera={{ position: [32, 45, 35], fov: 39 }} dpr={[1, 1.5]} gl={{ toneMappingExposure: 1.45 }}>
     <WarehouseScene {...props} />
   </Canvas>
 }
