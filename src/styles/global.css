@@ -108,3 +108,37 @@ nav { display: flex; align-self: stretch; } nav button { position: relative; col
 @media (max-width: 1250px) { .kpi-strip, .main-grid:not(.layout-mode), .bottom-zone.reference-bottom { width: calc(100% - 206px); margin-left: 206px; }.main-grid:not(.layout-mode) { grid-template-columns: minmax(0,1fr) 232px; }.main-grid.layout-mode { grid-template-columns: 220px minmax(0,1fr) 232px; }.left-panel { width: 194px; }.bottom-zone.reference-bottom { grid-template-columns: 1.5fr .95fr 1fr; }.app-shell:has(.controls-collapsed) .kpi-strip, .app-shell:has(.controls-collapsed) .main-grid:not(.layout-mode), .app-shell:has(.controls-collapsed) .bottom-zone.reference-bottom { width: calc(100% - 58px); margin-left: 58px; } }
 @media (max-width: 960px) { .kpi-strip, .main-grid:not(.layout-mode), .bottom-zone.reference-bottom { width: calc(100% - 198px); margin-left: 198px; }.main-grid:not(.layout-mode) { grid-template-columns: minmax(0,1fr); }.main-grid.layout-mode { grid-template-columns: 210px minmax(0,1fr); }.left-panel { width: 186px; }.telemetry-panel { display: none; }.app-shell:has(.controls-collapsed) .kpi-strip, .app-shell:has(.controls-collapsed) .main-grid:not(.layout-mode), .app-shell:has(.controls-collapsed) .bottom-zone.reference-bottom { width: calc(100% - 58px); margin-left: 58px; } }
 @media (max-width: 720px) { .kpi-strip, .main-grid:not(.layout-mode), .bottom-zone.reference-bottom { width: auto; margin-left: 0; }.main-grid:not(.layout-mode) { grid-template-columns: 1fr; }.main-grid.layout-mode { grid-template-columns: 1fr; }.left-panel { width: auto; position: static; top: auto; bottom: auto; left: auto; grid-row: 2; border: 1px solid #1d5a8f; border-radius: 7px; }.app-shell:has(.controls-collapsed) .kpi-strip, .app-shell:has(.controls-collapsed) .main-grid:not(.layout-mode), .app-shell:has(.controls-collapsed) .bottom-zone.reference-bottom { width: auto; margin-left: 0; }.control-reopen { position: static; width: auto; height: auto; margin: 6px 0; grid-row: 2; } }
+
+/* Layout Lab uses the same full-width command deck as Digital Twin, then lets
+   the warehouse canvas absorb remaining viewport height. */
+.app-shell.mode-layout { display: flex; flex-direction: column; height: 100dvh; min-height: 100dvh; overflow-x: hidden; overflow-y: auto; }
+.app-shell.mode-layout > .topbar { flex: 0 0 64px; }
+.app-shell.mode-layout > .kpi-strip,
+.app-shell.mode-layout > .bottom-zone.reference-bottom { width: auto; margin-left: 0; }
+.app-shell.mode-layout > .kpi-strip { flex: 0 0 auto; }
+.app-shell.mode-layout > .main-grid.layout-mode { flex: 1 0 0; width: auto; min-height: clamp(420px, 43vh, 680px); height: auto; margin: 0; grid-template-columns: minmax(260px, 16%) minmax(0, 1fr) minmax(280px, 17%); }
+.app-shell.mode-layout .layout-lab,
+.app-shell.mode-layout .viewport-panel,
+.app-shell.mode-layout .telemetry-panel { min-height: 0; }
+.app-shell.mode-layout > .bottom-zone.reference-bottom { flex: 0 0 auto; grid-template-columns: 1.22fr .88fr .78fr; }
+.app-shell.mode-layout > .notice { flex: 0 0 auto; margin-top: auto; }
+@media (max-width: 1250px) {
+  .app-shell.mode-layout > .main-grid.layout-mode { grid-template-columns: 220px minmax(0, 1fr) 232px; }
+  .app-shell.mode-layout > .bottom-zone.reference-bottom { grid-template-columns: 1.2fr .9fr; }
+  .app-shell.mode-layout .rack-summary { grid-column: span 2; }
+}
+@media (max-width: 960px) {
+  .app-shell.mode-layout > .main-grid.layout-mode { grid-template-columns: 210px minmax(0, 1fr); }
+  .app-shell.mode-layout > .main-grid.layout-mode > .telemetry-panel { display: none; }
+  .app-shell.mode-layout > .bottom-zone.reference-bottom { grid-template-columns: 1fr; }
+  .app-shell.mode-layout .rack-summary { grid-column: auto; }
+}
+@media (max-width: 720px) {
+  .app-shell.mode-layout { height: auto; }
+  .app-shell.mode-layout > .topbar { flex-basis: auto; }
+  .app-shell.mode-layout > .kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app-shell.mode-layout > .main-grid.layout-mode { flex: 0 0 auto; min-height: 0; grid-template-columns: 1fr; }
+  .app-shell.mode-layout > .main-grid.layout-mode > .layout-lab { grid-row: auto; max-height: 420px; }
+  .app-shell.mode-layout > .main-grid.layout-mode > .viewport-panel { grid-row: auto; height: 430px; }
+  .app-shell.mode-layout > .main-grid.layout-mode > .telemetry-panel { display: block; grid-row: auto; }
+}

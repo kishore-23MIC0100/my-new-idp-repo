@@ -212,7 +212,7 @@ export function App() {
     setProductQuery(product.code)
   }
 
-  return <main className="app-shell">
+  return <main className={`app-shell mode-${mode}`}>
     <header className="topbar">
       <a className="brand" href="#top" aria-label="NEXAI 2026 warehouse digital twin home"><span className="brand-mark">N</span><span className="brand-copy"><b>NEXAI<span>2026</span></b><small>WAREHOUSE DIGITAL TWIN<em>3D PICKING FLOOR GAME</em></small></span></a>
       <nav aria-label="Application sections">{navItems.map((item) => <button aria-current={mode === item.id ? 'page' : undefined} className={mode === item.id ? 'active' : ''} key={item.id} onClick={() => { setPlaying(false); if (item.id === 'layout') setActiveScenario('player'); setMode(item.id) }}><small>{item.index}</small>{item.label}</button>)}</nav>
@@ -227,7 +227,7 @@ export function App() {
       <button className="primary-action" disabled={!simulation} onClick={() => { if (mode === 'analytics') setMode('twin'); togglePlayback() }}><span>{playing ? 'Ⅱ' : '▶'}</span>{playing ? ' Pause replay' : ' Replay order'}</button>
     </section>
 
-    {mode === 'twin' && <section className="kpi-strip" aria-label="Live simulation metrics">
+    {mode !== 'analytics' && <section className="kpi-strip" aria-label="Live simulation metrics">
       <Kpi glyph="▣" label="TOTAL ORDERS" value={simulation ? simulation.result.metrics.completedOrders.toLocaleString() : '—'} detail={`${scenarioName(activeScenario)} scenario`} explanation="Distinct validated orders in the selected Retail II workload." />
       <Kpi glyph="◇" label="ITEMS PICKED" value={simulation ? simulation.result.metrics.totalItemPicks.toLocaleString() : '—'} detail={simulation ? `${simulation.result.metrics.totalUnitsHandled.toLocaleString()} units handled` : 'Loading dataset'} explanation="Unique SKU pick events from the scored order stream." />
       <Kpi glyph="⌁" label="TRAVEL DISTANCE" value={simulation ? `${(simulation.result.metrics.totalWalkingDistanceMeters / 1000).toFixed(2)} km` : '—'} detail="Aisle-aware routed walk" delta={distanceDelta} explanation="Total A-star travel distance through walkable warehouse cells. Delta compares the active layout with Original." />
