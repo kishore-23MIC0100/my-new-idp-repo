@@ -1,6 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { LayoutLab } from '../components/layout/LayoutLab'
+import { swapProductIntoSlot } from '../engine/layout'
 import { createOriginalLayout } from '../engine/warehouse'
-import { simulateOrders, type Product, type WarehouseOrder } from '../engine/simulation'
+import { createFastMoverLayout, simulateOrders, type Product, type WarehouseOrder } from '../engine/simulation'
 
 type Mode = 'twin' | 'layout' | 'analytics'
 type RetailProduct = Product & { code: string; description: string }
@@ -34,6 +36,8 @@ export function App() {
   const [speed, setSpeed] = useState(1)
   const [selectedProductId, setSelectedProductId] = useState<string>()
   const [webglAvailable, setWebglAvailable] = useState(true)
+  const [playerLayout, setPlayerLayout] = useState<Record<string, string>>()
+  const [layoutHistory, setLayoutHistory] = useState<Record<string, string>[]>([])
 
   useEffect(() => {
     let active = true
@@ -49,6 +53,10 @@ export function App() {
       .then((loaded) => {
         if (!active) return
         setDataset(loaded)
+        const original = createOriginalLayout([...loaded.products.map((product) => product.id)].sort())
+        const saved = sessionStorage.getItem('nexai-player-layout')
+        const restored = saved ? JSON.parse(saved) as Record<string, string> : original
+        setPlayerLayout(restored)
         setNotice(`Validated UCI Online Retail II data loaded: ${loaded.products.length} SKUs and ${loaded.orders.length.toLocaleString()} orders.`)
       })
       .catch(() => { if (active) setNotice('The processed dataset could not be loaded. Re-run the preprocessing script and refresh.') })
@@ -58,9 +66,9 @@ export function App() {
   const simulation = useMemo(() => {
     if (!dataset) return null
     const productIds = dataset.products.map((product) => product.id)
-    const layout = createOriginalLayout([...productIds].sort())
+    const layout = playerLayout ?? createOriginalLayout([...productIds].sort())
     return { layout, result: simulateOrders(dataset.orders, productIds, layout) }
-  }, [dataset])
+  }, [dataset, playerLayout])
   const activeOrder = dataset?.orders[0]
   const activeEvents = useMemo(() => simulation && activeOrder ? simulation.result.events.filter((event) => event.orderId === activeOrder.id) : [], [simulation, activeOrder])
   const activeEvent = activeEvents[eventIndex]
@@ -85,6 +93,29 @@ export function App() {
   const cycleSpeed = () => setSpeed((current) => current === 1 ? 2 : current === 2 ? 4 : 1)
   const productCount = dataset?.products.length ?? 0
   const orderCount = dataset?.orders.length ?? 0
+  const originalLayout = useMemo(() => dataset ? createOriginalLayout([...dataset.products.map((product) => product.id)].sort()) : undefined, [dataset])
+  const applyLayout = (next: Record<string, string>, message: string) => {
+    if (playerLayout) setLayoutHistory((history) => [...history, playerLayout])
+    setPlayerLayout(next)
+    sessionStorage.setItem('nexai-player-layout', JSON.stringify(next))
+    setNotice(message)
+  }
+  const swapIntoSlot = (productId: string, slotId: string) => {
+    if (!playerLayout) return
+    const next = swapProductIntoSlot(playerLayout, productId, slotId)
+    if (next === playerLayout) { setNotice('That product already occupies the selected slot.'); return }
+    applyLayout(next, `Swapped ${productId} into ${slotId}. Scores are recalculated with the same order stream.`)
+  }
+  const undoLayout = () => {
+    const previous = layoutHistory.at(-1)
+    if (!previous) return
+    setLayoutHistory((history) => history.slice(0, -1))
+    setPlayerLayout(previous)
+    sessionStorage.setItem('nexai-player-layout', JSON.stringify(previous))
+    setNotice('Restored the previous valid layout.')
+  }
+  const resetLayout = () => { if (originalLayout) { setLayoutHistory([]); setPlayerLayout(originalLayout); sessionStorage.removeItem('nexai-player-layout'); setNotice('Reset player layout to the documented original arrangement.') } }
+  const automaticLayout = () => { if (dataset) applyLayout(createFastMoverLayout(dataset.products), 'Applied the frequency-aware fast-mover baseline to your player layout.') }
 
   return <main className="app-shell">
     <header className="topbar">
@@ -99,8 +130,8 @@ export function App() {
       <button className="primary-action" disabled={!simulation} onClick={togglePlayback}><span>{playing ? 'Ⅱ' : '▶'}</span>{playing ? ' Pause replay' : ' Replay order'}</button>
     </section>
 
-    <div className="main-grid">
-      <aside className="panel left-panel">
+    <div className={mode === 'layout' ? 'main-grid layout-mode' : 'main-grid'}>
+      {mode === 'layout' && dataset && playerLayout ? <LayoutLab products={dataset.products} layout={playerLayout} selectedProductId={selectedProductId} onSelectProduct={setSelectedProductId} onSwap={swapIntoSlot} onUndo={undoLayout} onReset={resetLayout} onAutomatic={automaticLayout} canUndo={layoutHistory.length > 0} /> : <aside className="panel left-panel">
         <div className="panel-title"><span>01</span><h2>Control surface</h2></div>
         <div className="control-group"><label>ACTIVE LAYOUT</label><button className="select-control" onClick={() => setNotice('Original layout is the currently scored, neutral lexical-SKU starting layout.')}>Original layout <span>✓</span></button></div>
         <div className="control-group"><label>PRODUCT LOOKUP</label><input aria-label="Loaded product count" placeholder={`${productCount} validated SKUs loaded`} disabled /></div>
@@ -109,6 +140,7 @@ export function App() {
         <ul className={showLayers ? 'layer-list' : 'layer-list hidden'}><li><i className="cyan" /> Scored route <b>LIVE</b></li><li><i className="magenta" /> Picker target <b>LIVE</b></li><li><i className="lime" /> Product slots <b>{productCount}</b></li></ul>
         <div className="foundation-note"><span>ROUTING SOURCE</span><p>Every cyan segment is the same aisle-aware A* route used in scoring.</p></div>
       </aside>
+      }
 
       <section className="viewport-panel" aria-label="Interactive digital twin viewport">
         {simulation && dataset && webglAvailable ? <Suspense fallback={<div className="fallback-view"><span className="eyebrow">INITIALIZING TWIN</span><strong>Loading the real warehouse layout…</strong></div>}><DigitalTwin products={dataset.products} layout={simulation.layout} activeEvent={showLayers ? activeEvent : undefined} playing={playing} onSelectProduct={setSelectedProductId} selectedProductId={selectedProductId ?? activeEvent?.productId} /></Suspense> : <div className="fallback-view"><span className="eyebrow">{webglAvailable ? 'INITIALIZING TWIN' : 'WEBGL UNAVAILABLE'}</span><strong>{webglAvailable ? 'Loading the real warehouse layout…' : 'Use the operational panels and data report; the 3D scene requires WebGL.'}</strong></div>}

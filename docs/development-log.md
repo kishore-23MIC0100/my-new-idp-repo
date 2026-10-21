@@ -122,3 +122,25 @@ Add the 3D digital-twin viewport and make the animated picker consume the scored
 ### Next phase
 
 Build the slotting editor and comparison analytics around the same validated layout and scoring state.
+
+## Phase 7 — Product slotting game
+
+**Status:** Verified.
+
+### Delivered
+
+- Added a searchable Layout Lab using all 100 real processed SKU records and source-backed pick-frequency values.
+- Added product selection and valid-slot swapping. A slot always has one editable product, so a move is an atomic two-product swap rather than a duplicate or product loss.
+- Added undo, reset to the documented original layout, session-local persistence, and apply-fast-mover-baseline actions.
+- Recalculated route, travel, handling, and score metrics from the same 2,341-order input after every valid player-layout edit.
+
+### Verification
+
+- `npm run check` — passed.
+- `npm run build` — passed.
+- `npm run test` — passed: 13 frontend tests and 3 Python tests.
+- New unit tests prove products remain unique and layout validation passes after a swap; an empty/non-editable destination is rejected.
+
+### Next phase
+
+Build the analytics view with original, automatic, and player comparison metrics plus a route-derived rack-visit heatmap.
