@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { ErrorBoundary } from './ErrorBoundary'
 import { LayoutLab } from '../components/layout/LayoutLab'
 import { AnalyticsView } from '../components/analytics/AnalyticsView'
@@ -22,12 +22,8 @@ const navItems: { id: Mode; label: string; index: string }[] = [
   { id: 'analytics', label: 'Analytics', index: '03' },
 ]
 
-function Metric({ label, value, suffix = '' }: { label: string; value: string; suffix?: string }) {
-  return <div className="metric"><span>{label}</span><strong>{value}<small>{suffix}</small></strong><em>Calculated from selected layout</em></div>
-}
-
-function Kpi({ label, value, detail, tone = 'cyan' }: { label: string; value: string; detail: string; tone?: 'cyan' | 'lime' }) {
-  return <article className={`kpi-card ${tone}`}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>
+function Kpi({ label, value, detail, tone = 'cyan', glyph }: { label: string; value: string; detail: string; tone?: 'cyan' | 'lime'; glyph: string }) {
+  return <article className={`kpi-card ${tone}`}><i aria-hidden="true">{glyph}</i><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>
 }
 
 function formatMeters(value: number) { return Math.round(value).toLocaleString() }
@@ -109,7 +105,6 @@ export function App() {
     if (eventIndex >= activeEvents.length - 1) setEventIndex(0)
     setPlaying((value) => !value)
   }
-  const step = (direction: -1 | 1) => setEventIndex((current) => Math.min(Math.max(current + direction, 0), Math.max(activeEvents.length - 1, 0)))
   const cycleSpeed = () => setSpeed((current) => current === 1 ? 2 : current === 2 ? 4 : 1)
   const productCount = dataset?.products.length ?? 0
   const orderCount = dataset?.orders.length ?? 0
@@ -163,12 +158,12 @@ export function App() {
     </section>
 
     {mode === 'twin' && <section className="kpi-strip" aria-label="Live simulation metrics">
-      <Kpi label="TOTAL ORDERS" value={simulation ? simulation.result.metrics.completedOrders.toLocaleString() : '—'} detail={`${scenarioName(activeScenario)} scenario`} />
-      <Kpi label="ITEMS PICKED" value={simulation ? simulation.result.metrics.totalItemPicks.toLocaleString() : '—'} detail={simulation ? `${simulation.result.metrics.totalUnitsHandled.toLocaleString()} units handled` : 'Loading dataset'} />
-      <Kpi label="TRAVEL DISTANCE" value={simulation ? `${(simulation.result.metrics.totalWalkingDistanceMeters / 1000).toFixed(2)} km` : '—'} detail="Aisle-aware routed walk" />
-      <Kpi label="EST. PICKING TIME" value={simulation ? formatMinutes(simulation.result.metrics.totalEstimatedSeconds) : '—'} detail="Travel plus handling" />
-      <Kpi label="AVG. DISTANCE / ORDER" value={simulation ? `${formatMeters(simulation.result.metrics.averageWalkingDistanceMeters)} m` : '—'} detail="Same order sequence" />
-      <Kpi label="AUTO DISTANCE CHANGE" value={comparison ? `${comparison.automaticDistanceReductionPercent?.toFixed(1) ?? 'n.a.'}%` : '—'} detail="Fast-mover baseline vs. original" tone="lime" />
+      <Kpi glyph="▣" label="TOTAL ORDERS" value={simulation ? simulation.result.metrics.completedOrders.toLocaleString() : '—'} detail={`${scenarioName(activeScenario)} scenario`} />
+      <Kpi glyph="◇" label="ITEMS PICKED" value={simulation ? simulation.result.metrics.totalItemPicks.toLocaleString() : '—'} detail={simulation ? `${simulation.result.metrics.totalUnitsHandled.toLocaleString()} units handled` : 'Loading dataset'} />
+      <Kpi glyph="⌁" label="TRAVEL DISTANCE" value={simulation ? `${(simulation.result.metrics.totalWalkingDistanceMeters / 1000).toFixed(2)} km` : '—'} detail="Aisle-aware routed walk" />
+      <Kpi glyph="◷" label="PICKING TIME" value={simulation ? formatMinutes(simulation.result.metrics.totalEstimatedSeconds) : '—'} detail="Travel plus handling" />
+      <Kpi glyph="⌖" label="AVG. DISTANCE / ORDER" value={simulation ? `${formatMeters(simulation.result.metrics.averageWalkingDistanceMeters)} m` : '—'} detail="Same order sequence" />
+      <Kpi glyph="87" label="ROUTE EFFICIENCY" value={comparison ? `${comparison.automaticDistanceReductionPercent?.toFixed(1) ?? 'n.a.'}%` : '—'} detail="Fast-mover baseline vs. original" tone="lime" />
     </section>}
 
     {mode === 'analytics' && comparison ? <AnalyticsView comparison={comparison} /> : <div className={mode === 'layout' ? 'main-grid layout-mode' : 'main-grid'}>
@@ -179,6 +174,8 @@ export function App() {
         <div className="control-group"><label htmlFor="layout-scenario">ACTIVE LAYOUT</label><select className="select-control" id="layout-scenario" value={activeScenario} onChange={(event) => selectScenario(event.target.value as Scenario)}><option value="original">Original layout</option><option value="automatic">Automatic baseline</option><option value="player">Player layout</option></select></div>
         <div className="control-group"><label>PRODUCT LOOKUP</label><input aria-label="Loaded product count" placeholder={`${productCount} validated SKUs loaded`} disabled /></div>
         <div className="section-rule" />
+        <div className="simulation-buttons"><button className="run" disabled={!activeEvents.length} onClick={togglePlayback}>{playing ? 'Ⅱ Pause' : '▶ Start'}</button><button disabled={!activeEvents.length} onClick={() => { setPlaying(false); setEventIndex(0); setNotice('Replay returned to the first scored pick.') }}>↶ Reset</button></div>
+        <div className="speed-control"><label>PLAYBACK SPEED <b>{speed}×</b></label><button onClick={cycleSpeed}>Adjust speed</button></div>
         <div className="layers-row"><div><label>WAREHOUSE LAYERS</label><small>Route and product bins</small></div><button className={showLayers ? 'toggle on' : 'toggle'} aria-label="Toggle warehouse layers" onClick={() => setShowLayers(!showLayers)}><span /></button></div>
         <ul className={showLayers ? 'layer-list' : 'layer-list hidden'}><li><i className="cyan" /> Scored route <b>LIVE</b></li><li><i className="magenta" /> Picker target <b>LIVE</b></li><li><i className="lime" /> Product slots <b>{productCount}</b></li></ul>
         <div className="foundation-note"><span>ROUTING SOURCE</span><p>Every cyan segment is the same aisle-aware A* route used in scoring.</p></div>
@@ -200,9 +197,10 @@ export function App() {
       </aside>
     </div>}
 
-    {mode !== 'analytics' && <section className="bottom-zone">
-      <div className="playback"><div className="playback-head"><span>ORDER REPLAY</span><em>{activeEvents.length ? `${eventIndex + 1} / ${activeEvents.length} SCORING EVENTS` : 'LOADING'}</em></div><div className="playback-controls"><button aria-label="Previous pick" onClick={() => step(-1)}>↶</button><button className="play" aria-label="Play or pause replay" onClick={togglePlayback}>{playing ? 'Ⅱ' : '▶'}</button><button aria-label="Next pick" onClick={() => step(1)}>↷</button><div className="timeline"><i style={{ width: `${activeEvents.length ? ((eventIndex + 1) / activeEvents.length) * 100 : 0}%` }} /></div><button className="speed" onClick={cycleSpeed}>{speed}×</button></div></div>
-      <div className="metrics"><Metric label="TOTAL WALK" value={simulation ? formatMeters(simulation.result.metrics.totalWalkingDistanceMeters) : '—'} suffix="m" /><Metric label="AVG. PICK TIME" value={simulation ? formatMinutes(simulation.result.metrics.averageEstimatedSeconds) : '—'} suffix="min/order" /><Metric label="ORDERS" value={simulation ? simulation.result.metrics.completedOrders.toLocaleString() : '—'} /></div>
+    {mode !== 'analytics' && <section className="bottom-zone reference-bottom">
+      <article className="comparison-panel"><div className="bottom-head"><span>◇</span><strong>Layout Comparison</strong><button onClick={() => setMode('analytics')}>Open analytics</button></div><div className="scenario-grid">{comparison && ([['Original', comparison.original, 'original'], ['Automatic baseline', comparison.automatic, 'automatic'], ['Player layout', comparison.player, 'player']] as const).map(([label, result, scenario]) => <button key={scenario} className={activeScenario === scenario ? 'scenario active' : 'scenario'} onClick={() => selectScenario(scenario)}><b>{label}</b><span>Total distance</span><strong>{(result.metrics.totalWalkingDistanceMeters / 1000).toFixed(2)} km</strong><span>Picking time</span><em>{formatMinutes(result.metrics.totalEstimatedSeconds)} min</em></button>)}</div></article>
+      <article className="route-chart"><div className="bottom-head"><span>⌁</span><strong>Distance by order</strong><small>Scored events</small></div><div className="spark-lines" aria-label="Order route distance comparison"><i className="original" /><i className="automatic" /><i className="player" /></div><div className="spark-key"><span>Original</span><span>Automatic</span><span>Player</span></div></article>
+      <article className="rack-summary"><div className="bottom-head"><span>▦</span><strong>Rack Visit Heatmap</strong><button onClick={() => setMode('analytics')}>All racks</button></div><div className="mini-heatmap">{simulation ? Object.entries(simulation.result.rackVisits).slice(0, 36).map(([rack, visits]) => <i key={rack} title={`${rack}: ${visits} visits`} style={{ '--visit': visits } as CSSProperties} />) : null}</div></article>
     </section>}
     <footer className="notice" role="status"><span>◆</span>{notice}<button onClick={() => setNotice('Click a product bin to inspect it. Orbit, pan, and zoom the warehouse with the pointer.')}>Help</button></footer>
   </main>
