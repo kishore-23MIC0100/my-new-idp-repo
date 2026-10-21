@@ -117,7 +117,7 @@ export function App() {
   const activeOrderDistance = simulation?.result.orderDistances.find((order) => order.orderId === activeOrder?.id)?.distanceMeters ?? 0
   const productFrequencyTotal = dataset?.products.reduce((total, product) => total + product.pickFrequency, 0) ?? 0
   const selectedProductShare = selectedProduct && productFrequencyTotal ? selectedProduct.pickFrequency / productFrequencyTotal * 100 : 0
-  const completedPicks = eventIndex
+  const completedPicks = Math.min(eventIndex, activeEvents.length)
   const orderProgress = activeEvents.length ? Math.round((completedPicks / activeEvents.length) * 100) : 0
   const categoryProducts = useMemo(() => {
     const grouped = new Map<ProductCategory, RetailProduct[]>(categoryDefinitions.map((category) => [category.name, []]))
@@ -154,7 +154,7 @@ export function App() {
     const timer = window.setInterval(() => setEventIndex((current) => {
       const next = current + 1
       if (next >= activeEvents.length) {
-        if (!dataset || orderIndex >= dataset.orders.length - 1) { setPlaying(false); return current }
+        if (!dataset || orderIndex >= dataset.orders.length - 1) { setPlaying(false); return activeEvents.length }
         setOrderIndex((index) => index + 1)
         return 0
       }
@@ -165,7 +165,7 @@ export function App() {
 
   const togglePlayback = () => {
     if (!activeEvents.length) return
-    if (eventIndex >= activeEvents.length - 1) { setEventIndex(0); setOrderIndex(0) }
+    if (eventIndex >= activeEvents.length) { setEventIndex(0); setOrderIndex(0) }
     setPlaying((value) => !value)
   }
   const productCount = dataset?.products.length ?? 0
@@ -248,7 +248,7 @@ export function App() {
         <div className="warehouse-levels"><h3>Warehouse Layers</h3><div className="layer-buttons"><button className={visibleLayer === 'all' ? 'active' : ''} onClick={() => { setVisibleLayer('all'); setShowLayers(true) }}>All</button>{([1, 2, 3] as const).map((layer) => <button key={layer} className={visibleLayer === layer ? 'active' : ''} onClick={() => { setVisibleLayer(layer); setShowLayers(true); setNotice(`Showing rack level ${layer} in the 3D warehouse.`) }}>L{layer}</button>)}</div></div>
         <div className="section-rule compact-rule" />
         <div className="simulation-heading"><h3>Simulation Control</h3></div>
-        <div className="simulation-buttons"><button className="run" disabled={!activeEvents.length || playing} onClick={() => { if (eventIndex >= activeEvents.length - 1) { setOrderIndex(0); setEventIndex(0) } setPlaying(true) }}>▶ &nbsp; Start</button><button className="pause" disabled={!playing} onClick={() => setPlaying(false)}>Ⅱ &nbsp; Pause</button></div>
+        <div className="simulation-buttons"><button className="run" disabled={!activeEvents.length || playing} onClick={() => { if (eventIndex >= activeEvents.length) { setOrderIndex(0); setEventIndex(0) } setPlaying(true) }}>▶ &nbsp; Start</button><button className="pause" disabled={!playing} onClick={() => setPlaying(false)}>Ⅱ &nbsp; Pause</button></div>
         <div className="speed-control"><label htmlFor="playback-speed">PLAYBACK SPEED <b>{speed.toFixed(1)}×</b></label><input id="playback-speed" className="playback-range" type="range" min="0.5" max="2" step="0.1" value={speed} onChange={(event) => setSpeed(Number(event.target.value))} /></div>
         <div className="current-order-card"><span>Current Order</span><b>Order #{activeOrder?.id ?? 'Loading'}</b><small>{activeEvents.length} items · {formatMeters(activeOrderDistance)} m</small><i><u style={{ width: `${orderProgress}%` }} /></i><em>{completedPicks} / {activeEvents.length} picks</em></div>
       </aside> : <button className="control-reopen" onClick={() => setShowControlPanel(true)}>☷<span>Controls</span></button>
@@ -265,7 +265,21 @@ export function App() {
         <div className="panel-title"><span className="live-mark" /> <h2>Current Picker</h2><b className={playing ? 'picker-state is-picking' : 'picker-state'}>{playing ? '1 Picking' : 'Ready'}</b></div>
         <div className="picker-card"><div className="picker-figure" aria-hidden="true"><i /><b /><span /></div><div className="picker-copy"><span>Picker #1</span><strong>{playing ? 'Picking route' : 'Ready to pick'}</strong><small>Order #{activeOrder?.id ?? 'Loading'}</small><div><span>Current Location</span><b>{activeEvent?.slotId ?? 'Dock'}</b></div><div><span>Next Product</span><b>{activeEvent?.productId ?? selectedProduct?.code ?? '—'}</b></div><div><span>Remaining Distance</span><b>{activeEvent ? formatMeters(activeEvent.travelDistanceMeters) : '—'} m</b></div><div><span>Estimated Time</span><b>{activeEvent ? `${formatMinutes(activeEvent.travelDistanceMeters / 1.2 + activeEvent.handlingSeconds)} min` : '—'}</b></div></div></div>
         <div className="product-card"><span>Selected Product</span><div className="product-box" aria-hidden="true"><i /><b /><em /></div><div><b>{selectedProduct?.code ?? 'Choose a product'}</b><small>{selectedProduct?.description ?? 'Select a category, search result, or pick location'}</small><em className="pick-location">Pick Location</em><small>{selectedSlot ? `${selectedSlot.rackId} · L${selectedSlot.level}` : 'No location selected'}</small><span className="frequency-row">Pick Frequency <b>{selectedProduct ? `${selectedProductShare.toFixed(1)}%` : '—'}</b></span></div></div>
-        <div className="order-progress"><span>Active Order Progress</span><b>{completedPicks} / {activeEvents.length} picks <em>{orderProgress}%</em></b><i><u style={{ width: `${orderProgress}%` }} /></i>{activeEvents.slice(0, 3).map((event, index) => <small key={event.productId} className={index < completedPicks ? 'done' : index === completedPicks ? 'current' : ''}>{index + 1}. {dataset?.products.find((product) => product.id === event.productId)?.code ?? event.productId}</small>)}</div>
+        <div className="order-progress">
+          <span>Active Order Progress</span>
+          <div className="order-progress-summary"><strong>{completedPicks} / {activeEvents.length} picks</strong><em>{orderProgress}%</em></div>
+          <div className="order-progress-track" role="progressbar" aria-label="Active order picks completed" aria-valuemin={0} aria-valuemax={activeEvents.length} aria-valuenow={completedPicks} aria-valuetext={`${completedPicks} of ${activeEvents.length} picks completed`}><i style={{ width: `${orderProgress}%` }} /></div>
+          {activeEvents.length > 0 ? <ol className="order-pick-list" aria-label={`Pick sequence for order ${activeOrder?.id ?? ''}`}>
+            {activeEvents.map((event, index) => {
+              const status = index < completedPicks ? 'done' : index === completedPicks ? (playing ? 'current' : 'next') : 'pending'
+              const productCode = dataset?.products.find((product) => product.id === event.productId)?.code ?? event.productId
+              const statusLabel = status === 'done' ? 'Picked' : status === 'current' ? 'In Progress' : status === 'next' ? 'Next' : 'Pending'
+              return <li className={`pick-row ${status}`} key={`${activeOrder?.id}-${index}-${event.productId}`}>
+                <span className="pick-number">{index + 1}.</span><strong>{productCode}</strong><span className="pick-status"><i aria-hidden="true">{status === 'done' ? '✓' : status === 'current' ? '●' : '○'}</i>{statusLabel}</span>
+              </li>
+            })}
+          </ol> : <p className="order-pick-empty">{dataset ? 'No pick lines in this order.' : 'Loading order picks…'}</p>}
+        </div>
       </aside>
     </div>}
 

@@ -142,3 +142,20 @@ nav { display: flex; align-self: stretch; } nav button { position: relative; col
   .app-shell.mode-layout > .main-grid.layout-mode > .viewport-panel { grid-row: auto; height: 430px; }
   .app-shell.mode-layout > .main-grid.layout-mode > .telemetry-panel { display: block; grid-row: auto; }
 }
+
+.order-progress-summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 1px 0 7px; }
+.order-progress-summary strong { color: #cce6ff; font-size: 8px; font-weight: 600; }
+.order-progress-summary em { color: #46eaa8; font: 700 8px 'DM Mono', monospace; font-style: normal; }
+.order-progress-track { height: 7px; margin: 0 0 8px; overflow: hidden; border: 1px solid #16436b; border-radius: 6px; background: #0b2340; }
+.order-progress-track > i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #00d9f5, #35ef8e); box-shadow: 0 0 10px #00d9f566; transition: width .25s ease; }
+.order-pick-list { display: grid; gap: 1px; max-height: min(190px, 24vh); margin: 0; padding: 0 3px 0 0; overflow: auto; list-style: none; scrollbar-width: thin; scrollbar-color: #1679a8 #0a1b34; }
+.pick-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) 76px; align-items: center; gap: 5px; min-height: 20px; padding: 3px 2px; border-top: 1px solid #15395e; color: #8ca9c7; }
+.pick-number { color: #6e8eaf; font: 7px 'DM Mono', monospace; }
+.pick-row > strong { overflow: hidden; color: #c8dcf1; font: 8px 'DM Mono', monospace; text-overflow: ellipsis; white-space: nowrap; }
+.pick-status { display: flex; align-items: center; justify-content: flex-end; gap: 4px; color: #7898ba; font: 7px 'Space Grotesk', sans-serif; white-space: nowrap; }
+.pick-status > i { width: 9px; color: currentColor; font: 8px 'Space Grotesk', sans-serif; font-style: normal; text-align: center; }
+.pick-row.done .pick-status { color: #4beb9e; }
+.pick-row.current .pick-status, .pick-row.next .pick-status { color: #19dff2; }
+.pick-row.current > strong, .pick-row.next > strong { color: #effaff; }
+.order-pick-empty { margin: 8px 0 2px; color: #87a5c5; font-size: 8px; }
+@media (max-width: 720px) { .order-pick-list { max-height: 190px; }.pick-row { grid-template-columns: 20px minmax(0, 1fr) 82px; } }
