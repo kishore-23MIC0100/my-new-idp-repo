@@ -23,7 +23,7 @@ function RackHeatmap({ result }: { result: SimulationResult }) {
 
 export function AnalyticsView({ comparison }: AnalyticsViewProps) {
   const { original, automatic, player } = comparison
-  return <section className="analytics-view" aria-label="Simulation analytics">
+  return <section className="analytics-view" aria-label="Simulation analytics" tabIndex={-1}>
     <div className="analytics-intro"><div><p className="eyebrow">SAME ORDERS · SAME ROUTES · DIFFERENT SLOT ASSIGNMENT</p><h2>Measured layout comparison</h2></div><p>Walking and handling time are calculated separately. Improvement uses the original layout as its denominator.</p></div>
     <div className="analytics-summary">
       <div><span>PLAYER WALK CHANGE</span><strong className={comparison.playerDistanceReductionPercent !== null && comparison.playerDistanceReductionPercent < 0 ? 'negative' : 'positive'}>{formatPercent(comparison.playerDistanceReductionPercent)}</strong><small>vs. original total distance</small></div>

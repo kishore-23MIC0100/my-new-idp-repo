@@ -177,6 +177,7 @@ Polish responsive behavior, add error-recovery safeguards, complete README guida
 - Added an error boundary around the lazy 3D scene so the remaining application stays usable if its renderer fails.
 - Added Vercel SPA rewrite configuration.
 - Rewrote README to document actual functionality, actual derived-data counts, fair scoring assumptions, local setup, checks, dataset regeneration, and deployment.
+- Added layout restoration validation, navigation state cues, and a replay handoff from Analytics back to the live twin.
 
 ### Verification
 

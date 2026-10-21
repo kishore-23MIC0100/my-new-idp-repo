@@ -3,7 +3,7 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { LayoutLab } from '../components/layout/LayoutLab'
 import { AnalyticsView } from '../components/analytics/AnalyticsView'
 import { swapProductIntoSlot } from '../engine/layout'
-import { createOriginalLayout } from '../engine/warehouse'
+import { createOriginalLayout, validateLayout } from '../engine/warehouse'
 import { compareLayouts, createFastMoverLayout, simulateOrders, type Product, type WarehouseOrder } from '../engine/simulation'
 
 type Mode = 'twin' | 'layout' | 'analytics'
@@ -60,7 +60,11 @@ export function App() {
         const original = createOriginalLayout([...loaded.products.map((product) => product.id)].sort())
         const saved = sessionStorage.getItem('nexai-player-layout')
         let restored = original
-        try { restored = saved ? JSON.parse(saved) as Record<string, string> : original } catch { sessionStorage.removeItem('nexai-player-layout') }
+        try {
+          const candidate = saved ? JSON.parse(saved) as Record<string, string> : original
+          validateLayout(candidate, loaded.products.map((product) => product.id))
+          restored = candidate
+        } catch { sessionStorage.removeItem('nexai-player-layout') }
         setPlayerLayout(restored)
         setDataError(undefined)
         setNotice(`Validated UCI Online Retail II data loaded: ${loaded.products.length} SKUs and ${loaded.orders.length.toLocaleString()} orders.`)
@@ -127,14 +131,14 @@ export function App() {
   return <main className="app-shell">
     <header className="topbar">
       <a className="brand" href="#top" aria-label="NEXAI warehouse digital twin home"><span className="brand-mark">N</span><span>NEXAI<small>WAREHOUSE DIGITAL TWIN</small></span></a>
-      <nav aria-label="Application sections">{navItems.map((item) => <button className={mode === item.id ? 'active' : ''} key={item.id} onClick={() => setMode(item.id)}><small>{item.index}</small>{item.label}</button>)}</nav>
+      <nav aria-label="Application sections">{navItems.map((item) => <button aria-current={mode === item.id ? 'page' : undefined} className={mode === item.id ? 'active' : ''} key={item.id} onClick={() => { setPlaying(false); setMode(item.id) }}><small>{item.index}</small>{item.label}</button>)}</nav>
       <div className="system-status"><span className={dataset ? 'status-dot loaded' : 'status-dot'} />DATA PIPELINE <b>{dataset ? 'VALIDATED' : 'LOADING'}</b></div>
     </header>
 
     <section className="command-header" id="top">
       <div><p className="eyebrow">PS 4.2 / TRACK 04 / COMMAND CENTER</p><h1>{mode === 'twin' ? 'Picking Floor / Digital Twin' : mode === 'layout' ? 'Slotting / Layout Lab' : 'Run / Analytics'}</h1></div>
       <div className="dataset-strip"><span>DATASET</span><strong>UCI ONLINE RETAIL II</strong><small>{dataset ? `${dataset.metadata.selectedPeriod} · ${productCount} SKUs · ${orderCount.toLocaleString()} orders` : 'Validating processed data'}</small></div>
-      <button className="primary-action" disabled={!simulation} onClick={togglePlayback}><span>{playing ? 'Ⅱ' : '▶'}</span>{playing ? ' Pause replay' : ' Replay order'}</button>
+      <button className="primary-action" disabled={!simulation} onClick={() => { if (mode === 'analytics') setMode('twin'); togglePlayback() }}><span>{playing ? 'Ⅱ' : '▶'}</span>{playing ? ' Pause replay' : ' Replay order'}</button>
     </section>
 
     {mode === 'analytics' && comparison ? <AnalyticsView comparison={comparison} /> : <div className={mode === 'layout' ? 'main-grid layout-mode' : 'main-grid'}>

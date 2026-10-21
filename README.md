@@ -11,6 +11,7 @@ An interactive browser-based warehouse slotting game built from a processed UCI 
 - Slotting Lab with search, product swapping, undo, reset, session-local layout persistence, and baseline application.
 - Analytics comparison and a rack-visit heatmap generated from simulation events.
 - WebGL and data-load recovery views.
+- Keyboard-focusable controls and a reduced-motion-aware interface.
 
 ## Technology
 
