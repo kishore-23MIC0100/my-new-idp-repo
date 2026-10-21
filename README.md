@@ -1,57 +1,66 @@
 # NEXAI 2026 — Warehouse Digital Twin
 
-## Phase 1 status
+An interactive browser-based warehouse slotting game built from a processed UCI Online Retail II order stream. It tests how product placement changes picker walking distance under a consistent, aisle-aware warehouse model.
 
-This repository contains the verified TypeScript + React + Vite foundation, command-center shell, and reproducible UCI Online Retail II preprocessing pipeline. It does **not** yet claim that simulation, 3D routing, or optimisation are complete.
+## What works
 
-### Current foundation
+- Real-data preprocessing for November 2011: 100 products and 2,341 exported orders.
+- Deterministic A* routes that respect rack obstacles and rack-face access points.
+- Fair original, automatic fast-mover, and player-layout scoring from the same order stream.
+- Three.js warehouse with a picker and route overlay that consume actual scoring events.
+- Slotting Lab with search, product swapping, undo, reset, session-local layout persistence, and baseline application.
+- Analytics comparison and a rack-visit heatmap generated from simulation events.
+- WebGL and data-load recovery views.
 
-- Strict TypeScript React/Vite application scaffold.
-- Responsive cyber-industrial command-center interface.
-- State-aware controls that report why unavailable features are unavailable.
-- Explicit empty states rather than fabricated warehouse metrics.
-- Browser-ready JSON derived from the supplied UCI workbook for November 2011, served as `/data/retail-2011-11.json`.
-- Data-quality report and Python tests for core cleaning and schema rules.
+## Technology
 
-### Planned source attribution
+React, Vite, TypeScript, Three.js, React Three Fiber, Drei, Vitest, Python, pandas, and openpyxl.
 
-The intended data source is [UCI Online Retail II](https://archive.ics.uci.edu/dataset/502/online+retail+ii), distributed under CC BY 4.0. A selected month, cleaning rules, pipeline output, and derived statistics will be documented when the preprocessing phase is implemented.
+## Dataset and processing
 
-### Run locally
+The source is [UCI Online Retail II](https://archive.ics.uci.edu/dataset/502/online+retail+ii), licensed CC BY 4.0. The pipeline reads `Year 2010-2011`, selects November 2011, and removes cancelled invoices, missing invoice/timestamp records, non-positive quantities, and non-product codes. The top 100 products are selected by eligible units ordered. Lines outside that set are excluded from the compact browser dataset and repeated products on an invoice are aggregated.
+
+Actual output: 83,215 eligible source lines, 100 products, 2,341 orders, 14,043 product picks, and 266,506 handled units. See [the data-quality report](docs/data-quality-report-2011-11.json).
+
+## Routing and scoring
+
+The warehouse is a 30 × 20 grid with 1.5 m cells, six rack blocks, a packing dock, and 252 valid rack-face slots. The picker uses four-direction A* and returns to the dock at the end of each order. The original layout is a disclosed neutral lexical-SKU placement because the source data includes no physical warehouse position.
+
+The baseline ranks products by eligible units and slots by dock round-trip cost, then assigns fast movers to lower-cost slots. Estimated time includes walking at 1.2 m/s plus 5 seconds per product line and 1 second per handled unit. These are simulation assumptions, not observed labour measurements.
+
+Read the full [warehouse model](docs/warehouse-model.md) and [simulation methodology](docs/simulation-method.md).
+
+## Run locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-### Checks
+## Verify
 
 ```bash
 npm run check
-npm run build
 npm run test
+npm run build
 ```
 
-### Regenerate the real dataset
+## Regenerate the dataset
 
-The pipeline uses the `Year 2010-2011` worksheet and selects November 2011. It excludes cancelled invoices, missing invoices/timestamps, non-positive quantities, and non-product codes. Products are ranked by eligible units ordered; the top 100 are retained. Lines outside those products are removed from exported orders, and duplicate product lines within an invoice are aggregated.
+The source workbook is intentionally not committed. With an authorized local copy:
 
 ```bash
 /Users/kishore/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/process_retail_data.py /path/to/online_retail_II.xlsx
 ```
 
-### Warehouse model and routing
+## Deploy
 
-The deterministic aisle model, slot rules, and A* route policy are documented in [`docs/warehouse-model.md`](docs/warehouse-model.md). It uses a 30 × 20 grid, 1.5 m cell edges, rack obstacles, and reachable rack-face access cells.
+The repository is Vercel-compatible. Import it into Vercel as a Vite project; the build command is `npm run build` and the output directory is `dist`.
 
-### Simulation methodology
+## Limitations and next steps
 
-The fair scoring policy, travel and handling assumptions, automatic fast-mover baseline, and reduction formula are documented in [`docs/simulation-method.md`](docs/simulation-method.md). The engine is tested against all 2,341 processed real-data orders; its UI presentation is the following phase.
+This MVP models a single picker, no congestion, and a nearest-next-pick order policy. Batch picking, multiple pickers, true drag-and-drop in the 3D scene, shared leaderboards, and measured warehouse calibration are future work.
 
-### Interactive digital twin
+## Team and links
 
-The command center now lazy-loads an interactive Three.js warehouse. Orbit, pan, and zoom are available in the viewport. The picker, cyan route overlay, target telemetry, and step controls all consume a real scored pick event from the first exported order. A clear non-WebGL fallback stays available when hardware acceleration is not available.
-
-## Team
-
-Team details, deployment URL, demo video, and development log links are intentionally left to be supplied by the project team.
+Add team members, deployment URL, demo video, and development log link before final competition submission.

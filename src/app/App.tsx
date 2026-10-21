@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { ErrorBoundary } from './ErrorBoundary'
 import { LayoutLab } from '../components/layout/LayoutLab'
 import { AnalyticsView } from '../components/analytics/AnalyticsView'
 import { swapProductIntoSlot } from '../engine/layout'
@@ -39,6 +40,8 @@ export function App() {
   const [webglAvailable, setWebglAvailable] = useState(true)
   const [playerLayout, setPlayerLayout] = useState<Record<string, string>>()
   const [layoutHistory, setLayoutHistory] = useState<Record<string, string>[]>([])
+  const [dataError, setDataError] = useState<string>()
+  const [loadAttempt, setLoadAttempt] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -56,13 +59,15 @@ export function App() {
         setDataset(loaded)
         const original = createOriginalLayout([...loaded.products.map((product) => product.id)].sort())
         const saved = sessionStorage.getItem('nexai-player-layout')
-        const restored = saved ? JSON.parse(saved) as Record<string, string> : original
+        let restored = original
+        try { restored = saved ? JSON.parse(saved) as Record<string, string> : original } catch { sessionStorage.removeItem('nexai-player-layout') }
         setPlayerLayout(restored)
+        setDataError(undefined)
         setNotice(`Validated UCI Online Retail II data loaded: ${loaded.products.length} SKUs and ${loaded.orders.length.toLocaleString()} orders.`)
       })
-      .catch(() => { if (active) setNotice('The processed dataset could not be loaded. Re-run the preprocessing script and refresh.') })
+      .catch(() => { if (active) { setDataError('The processed dataset could not be loaded.'); setNotice('The processed dataset could not be loaded. Re-run preprocessing or retry.') } })
     return () => { active = false }
-  }, [])
+  }, [loadAttempt])
 
   const simulation = useMemo(() => {
     if (!dataset) return null
@@ -145,7 +150,7 @@ export function App() {
       }
 
       <section className="viewport-panel" aria-label="Interactive digital twin viewport">
-        {simulation && dataset && webglAvailable ? <Suspense fallback={<div className="fallback-view"><span className="eyebrow">INITIALIZING TWIN</span><strong>Loading the real warehouse layout…</strong></div>}><DigitalTwin products={dataset.products} layout={simulation.layout} activeEvent={showLayers ? activeEvent : undefined} playing={playing} onSelectProduct={setSelectedProductId} selectedProductId={selectedProductId ?? activeEvent?.productId} /></Suspense> : <div className="fallback-view"><span className="eyebrow">{webglAvailable ? 'INITIALIZING TWIN' : 'WEBGL UNAVAILABLE'}</span><strong>{webglAvailable ? 'Loading the real warehouse layout…' : 'Use the operational panels and data report; the 3D scene requires WebGL.'}</strong></div>}
+        {simulation && dataset && webglAvailable ? <ErrorBoundary fallback={<div className="fallback-view"><span className="eyebrow">3D VIEW RECOVERY</span><strong>The 3D renderer stopped. Use the Layout Lab and Analytics views, then refresh to retry WebGL.</strong></div>}><Suspense fallback={<div className="fallback-view"><span className="eyebrow">INITIALIZING TWIN</span><strong>Loading the real warehouse layout…</strong></div>}><DigitalTwin products={dataset.products} layout={simulation.layout} activeEvent={showLayers ? activeEvent : undefined} playing={playing} onSelectProduct={setSelectedProductId} selectedProductId={selectedProductId ?? activeEvent?.productId} /></Suspense></ErrorBoundary> : <div className="fallback-view"><span className="eyebrow">{dataError ?? (webglAvailable ? 'INITIALIZING TWIN' : 'WEBGL UNAVAILABLE')}</span><strong>{dataError ? 'Check the processed JSON asset, then retry the data request.' : webglAvailable ? 'Loading the real warehouse layout…' : 'Use the operational panels and data report; the 3D scene requires WebGL.'}</strong>{dataError && <button className="retry-button" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>Retry data load</button>}</div>}
         <div className="viewport-tools"><button onClick={() => setNotice('Use drag to orbit, right-drag to pan, and the wheel to zoom.')}>⌖ Camera help</button><button onClick={() => setSelectedProductId(undefined)}>× Clear selection</button></div>
         <div className="legend"><span><i className="cyan" />Scored route</span><span><i className="magenta" />Target / picker</span><span><i className="lime" />Product bin</span></div>
       </section>

@@ -166,3 +166,25 @@ Build the analytics view with original, automatic, and player comparison metrics
 ### Next phase
 
 Polish responsive behavior, add error-recovery safeguards, complete README guidance, and perform final end-to-end verification.
+
+## Phase 9 — Reliability, documentation, and deployment readiness
+
+**Status:** Verified.
+
+### Delivered
+
+- Added a guarded dataset-load retry path and recovery messaging for malformed session layout state.
+- Added an error boundary around the lazy 3D scene so the remaining application stays usable if its renderer fails.
+- Added Vercel SPA rewrite configuration.
+- Rewrote README to document actual functionality, actual derived-data counts, fair scoring assumptions, local setup, checks, dataset regeneration, and deployment.
+
+### Verification
+
+- `npm run check` — passed.
+- `npm run build` — passed.
+- `npm run test` — passed.
+
+### Remaining external work
+
+- Deploy the committed repository to Vercel and test the live URL.
+- Add project team, demo video, and competition submission links when supplied.
