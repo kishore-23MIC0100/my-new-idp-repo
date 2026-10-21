@@ -50,6 +50,7 @@ export type SimulationMetrics = Readonly<{
 export type SimulationResult = Readonly<{
   metrics: SimulationMetrics
   events: readonly PickEvent[]
+  orderDistances: readonly Readonly<{ orderId: string; distanceMeters: number }>[]
   rackVisits: Readonly<Record<string, number>>
 }>
 
@@ -92,6 +93,7 @@ export function simulateOrders(
   validateLayout(layout, productIds)
   if (config.walkingSpeedMetersPerSecond <= 0) throw new Error('Walking speed must be positive')
   const events: PickEvent[] = []
+  const orderDistances: { orderId: string; distanceMeters: number }[] = []
   const rackVisits: Record<string, number> = {}
   let totalDistance = 0
   let totalHandlingSeconds = 0
@@ -106,6 +108,7 @@ export function simulateOrders(
     }
     const remaining = [...order.items]
     let current = PACKING_DOCK
+    let orderDistance = 0
     while (remaining.length) {
       const next = chooseNextItem(current, remaining, layout)
       const slotId = layout[next.productId]
@@ -122,6 +125,7 @@ export function simulateOrders(
         handlingSeconds,
       })
       totalDistance += route.distanceMeters
+      orderDistance += route.distanceMeters
       totalHandlingSeconds += handlingSeconds
       totalUnits += next.quantity
       rackVisits[slot.rackId] = (rackVisits[slot.rackId] ?? 0) + 1
@@ -131,6 +135,8 @@ export function simulateOrders(
     const returnRoute = findShortestRoute(current, PACKING_DOCK)
     if (!returnRoute) throw new Error(`No return route exists for order ${order.id}`)
     totalDistance += returnRoute.distanceMeters
+    orderDistance += returnRoute.distanceMeters
+    orderDistances.push({ orderId: order.id, distanceMeters: orderDistance })
   }
 
   const totalTravelSeconds = totalDistance / config.walkingSpeedMetersPerSecond
@@ -138,6 +144,7 @@ export function simulateOrders(
   const completedOrders = orders.length
   return {
     events,
+    orderDistances,
     rackVisits,
     metrics: {
       totalWalkingDistanceMeters: totalDistance,
