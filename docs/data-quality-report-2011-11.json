@@ -6,7 +6,7 @@
     "sourceSheet": "Year 2010-2011",
     "license": "CC BY 4.0",
     "selectedPeriod": "2011-11",
-    "generatedOn": "2026-10-21"
+    "sourceSha256": "bcbe73b35f5b7babf197fb0cb983a11f5d9ff929078d4aa53d171b1f2df2e980"
   },
   "processingConfig": {
     "selected_period": "2011-11",
@@ -15,7 +15,8 @@
     "pick_definition": "One order line for a selected SKU; quantities are retained as units handled.",
     "product_code_rule": "StockCode matches ^\\d{5}[A-Za-z]{0,2}$",
     "outside_selected_product_rule": "Discarded from exported orders; orders with no selected products are excluded.",
-    "order_grouping_rule": "Invoice lines are aggregated by invoice and product code."
+    "order_grouping_rule": "Invoice lines are aggregated by invoice and product code.",
+    "timezone_rule": "Naive source timestamps retained as UK local wall time; no timezone conversion."
   },
   "quality": {
     "eligible_order_lines": 83215,
@@ -24,6 +25,7 @@
     "excluded_missing_invoice": 0,
     "excluded_missing_timestamp": 0,
     "excluded_nonpositive_quantity": 137,
+    "missing_descriptions_filled": 52,
     "rows_in_selected_period": 84711,
     "rows_outside_period": 457199,
     "rows_read": 541910,
@@ -31,8 +33,10 @@
     "eligible_invoices": 2864,
     "selected_products": 100,
     "selected_product_order_lines": 14598,
-    "exported_orders": 2341,
-    "exported_order_items": 14043,
+    "excluded_unselected_product_lines": 68617,
+    "invoices_without_selected_products": 525,
+    "exported_orders": 2339,
+    "exported_order_items": 14042,
     "exported_units": 266506.0
   }
 }

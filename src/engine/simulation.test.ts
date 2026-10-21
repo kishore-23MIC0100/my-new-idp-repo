@@ -12,6 +12,22 @@ const orders: WarehouseOrder[] = [
 ]
 
 describe('simulation engine', () => {
+  it('rejects non-finite and negative configuration and quantities', () => {
+    const layout = createOriginalLayout(['FAST', 'SLOW'])
+    for (const speed of [NaN, Infinity, 0, -1]) expect(() => simulateOrders(orders, ['FAST', 'SLOW'], layout, { walkingSpeedMetersPerSecond: speed, handlingSecondsPerLine: 5, handlingSecondsPerUnit: 1 })).toThrow()
+    expect(() => simulateOrders([{ ...orders[0], items: [{ productId: 'FAST', quantity: NaN }] }], ['FAST', 'SLOW'], layout)).toThrow()
+    expect(() => simulateOrders([{ ...orders[0], items: [{ productId: 'FAST', quantity: 1 }, { productId: 'FAST', quantity: 1 }] }], ['FAST', 'SLOW'], layout)).toThrow()
+  })
+  it('handles no orders and rejects an empty order explicitly', () => {
+    const layout = createOriginalLayout(['FAST', 'SLOW'])
+    expect(simulateOrders([], ['FAST', 'SLOW'], layout).metrics.totalWalkingDistanceMeters).toBe(0)
+    expect(() => simulateOrders([{ ...orders[0], items: [] }], ['FAST', 'SLOW'], layout)).toThrow('no items')
+  })
+  it('records return events and reconciles per-order times', () => {
+    const result = simulateOrders(orders, ['FAST', 'SLOW'], createOriginalLayout(['FAST', 'SLOW']))
+    expect(result.timeline.filter(e => e.kind === 'return')).toHaveLength(2)
+    expect(result.perOrder.reduce((sum, order) => sum + order.estimatedSeconds, 0)).toBeCloseTo(result.metrics.totalEstimatedSeconds)
+  })
   it('is deterministic when inputs, layout, and configuration are unchanged', () => {
     const layout = createOriginalLayout(products.map((product) => product.id))
     expect(simulateOrders(orders, products.map((product) => product.id), layout)).toEqual(simulateOrders(orders, products.map((product) => product.id), layout))

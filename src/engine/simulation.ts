@@ -27,6 +27,7 @@ export const DEFAULT_SIMULATION_CONFIG: SimulationConfig = {
 }
 
 export type PickEvent = Readonly<{
+  kind: 'pick' | 'return'
   orderId: string
   productId: string
   slotId: string
@@ -50,6 +51,8 @@ export type SimulationMetrics = Readonly<{
 export type SimulationResult = Readonly<{
   metrics: SimulationMetrics
   events: readonly PickEvent[]
+  timeline: readonly PickEvent[]
+  perOrder: readonly { orderId: string; distanceMeters: number; estimatedSeconds: number }[]
   rackVisits: Readonly<Record<string, number>>
 }>
 
@@ -90,18 +93,23 @@ export function simulateOrders(
   config: SimulationConfig = DEFAULT_SIMULATION_CONFIG,
 ): SimulationResult {
   validateLayout(layout, productIds)
-  if (config.walkingSpeedMetersPerSecond <= 0) throw new Error('Walking speed must be positive')
+  if (!Number.isFinite(config.walkingSpeedMetersPerSecond) || config.walkingSpeedMetersPerSecond <= 0) throw new Error('Walking speed must be positive and finite')
+  if (![config.handlingSecondsPerLine, config.handlingSecondsPerUnit].every((value) => Number.isFinite(value) && value >= 0)) throw new Error('Handling times must be finite and nonnegative')
   const events: PickEvent[] = []
+  const timeline: PickEvent[] = []
+  const perOrder: { orderId: string; distanceMeters: number; estimatedSeconds: number }[] = []
   const rackVisits: Record<string, number> = {}
   let totalDistance = 0
   let totalHandlingSeconds = 0
   let totalUnits = 0
 
   for (const order of orders) {
+    const distanceBefore = totalDistance
+    const handlingBefore = totalHandlingSeconds
     if (!order.items.length) throw new Error(`Order ${order.id} contains no items`)
     const seen = new Set<string>()
     for (const item of order.items) {
-      if (!layout[item.productId] || item.quantity <= 0 || seen.has(item.productId)) throw new Error(`Order ${order.id} is invalid for this layout`)
+      if (!layout[item.productId] || !Number.isFinite(item.quantity) || item.quantity <= 0 || seen.has(item.productId)) throw new Error(`Order ${order.id} is invalid for this layout`)
       seen.add(item.productId)
     }
     const remaining = [...order.items]
@@ -114,6 +122,7 @@ export function simulateOrders(
       if (!slot) throw new Error(`Layout references missing slot ${slotId}`)
       const handlingSeconds = config.handlingSecondsPerLine + next.quantity * config.handlingSecondsPerUnit
       events.push({
+        kind: 'pick',
         orderId: order.id,
         productId: next.productId,
         slotId,
@@ -121,6 +130,7 @@ export function simulateOrders(
         travelDistanceMeters: route.distanceMeters,
         handlingSeconds,
       })
+      timeline.push(events[events.length - 1])
       totalDistance += route.distanceMeters
       totalHandlingSeconds += handlingSeconds
       totalUnits += next.quantity
@@ -131,6 +141,9 @@ export function simulateOrders(
     const returnRoute = findShortestRoute(current, PACKING_DOCK)
     if (!returnRoute) throw new Error(`No return route exists for order ${order.id}`)
     totalDistance += returnRoute.distanceMeters
+    timeline.push({ kind: 'return', orderId: order.id, productId: '', slotId: 'DOCK', route: returnRoute.points, travelDistanceMeters: returnRoute.distanceMeters, handlingSeconds: 0 })
+    const distanceMeters = totalDistance - distanceBefore
+    perOrder.push({ orderId: order.id, distanceMeters, estimatedSeconds: distanceMeters / config.walkingSpeedMetersPerSecond + totalHandlingSeconds - handlingBefore })
   }
 
   const totalTravelSeconds = totalDistance / config.walkingSpeedMetersPerSecond
@@ -138,6 +151,8 @@ export function simulateOrders(
   const completedOrders = orders.length
   return {
     events,
+    timeline,
+    perOrder,
     rackVisits,
     metrics: {
       totalWalkingDistanceMeters: totalDistance,

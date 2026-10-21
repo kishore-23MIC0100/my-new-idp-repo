@@ -6,7 +6,7 @@
     "sourceSheet": "Year 2010-2011",
     "license": "CC BY 4.0",
     "selectedPeriod": "2011-11",
-    "generatedOn": "2026-10-21"
+    "sourceSha256": "bcbe73b35f5b7babf197fb0cb983a11f5d9ff929078d4aa53d171b1f2df2e980"
   },
   "processingConfig": {
     "selected_period": "2011-11",
@@ -15,7 +15,8 @@
     "pick_definition": "One order line for a selected SKU; quantities are retained as units handled.",
     "product_code_rule": "StockCode matches ^\\d{5}[A-Za-z]{0,2}$",
     "outside_selected_product_rule": "Discarded from exported orders; orders with no selected products are excluded.",
-    "order_grouping_rule": "Invoice lines are aggregated by invoice and product code."
+    "order_grouping_rule": "Invoice lines are aggregated by invoice and product code.",
+    "timezone_rule": "Naive source timestamps retained as UK local wall time; no timezone conversion."
   },
   "products": [
     {
@@ -27587,6 +27588,10 @@
       "timestamp": "2011-11-13T15:05:00",
       "items": [
         {
+          "productId": "20724",
+          "quantity": 3
+        },
+        {
           "productId": "20725",
           "quantity": 3
         },
@@ -27603,6 +27608,14 @@
           "quantity": 24
         },
         {
+          "productId": "22355",
+          "quantity": 3
+        },
+        {
+          "productId": "22382",
+          "quantity": 3
+        },
+        {
           "productId": "22993",
           "quantity": 10
         },
@@ -27615,30 +27628,12 @@
           "quantity": 6
         },
         {
-          "productId": "84991",
-          "quantity": 6
-        }
-      ]
-    },
-    {
-      "id": "576057",
-      "timestamp": "2011-11-13T15:06:00",
-      "items": [
-        {
-          "productId": "20724",
-          "quantity": 3
-        },
-        {
-          "productId": "22355",
-          "quantity": 3
-        },
-        {
-          "productId": "22382",
-          "quantity": 3
-        },
-        {
           "productId": "23583",
           "quantity": 3
+        },
+        {
+          "productId": "84991",
+          "quantity": 6
         }
       ]
     },
@@ -57057,6 +57052,10 @@
       "timestamp": "2011-11-24T15:02:00",
       "items": [
         {
+          "productId": "22411",
+          "quantity": 1
+        },
+        {
           "productId": "22909",
           "quantity": 1
         },
@@ -57070,25 +57069,11 @@
         },
         {
           "productId": "84347",
-          "quantity": 3
+          "quantity": 6
         },
         {
           "productId": "84879",
           "quantity": 4
-        }
-      ]
-    },
-    {
-      "id": "578548",
-      "timestamp": "2011-11-24T15:03:00",
-      "items": [
-        {
-          "productId": "22411",
-          "quantity": 1
-        },
-        {
-          "productId": "84347",
-          "quantity": 3
         }
       ]
     },

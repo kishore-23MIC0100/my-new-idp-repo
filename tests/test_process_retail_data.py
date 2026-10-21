@@ -29,6 +29,36 @@ def fixture_frame() -> pd.DataFrame:
 
 
 class ProcessRetailDataTest(unittest.TestCase):
+    def test_missing_dates_descriptions_and_nonfinite_quantities(self) -> None:
+        raw = fixture_frame().iloc[:3].copy()
+        raw['Quantity'] = raw['Quantity'].astype(float)
+        raw.loc[0, "InvoiceDate"] = None
+        raw.loc[1, "Description"] = None
+        raw.loc[2, "Quantity"] = float('inf')
+        dataset, report = PROCESSOR.build_dataset(raw, 'fixture.xlsx')
+        self.assertEqual(report['quality']['excluded_missing_timestamp'], 1)
+        self.assertEqual(report['quality']['excluded_nonpositive_quantity'], 1)
+        self.assertEqual(dataset['products'][0]['description'], 'Unknown product')
+
+    def test_invoice_aggregation_and_chronology_independent_of_invoice_number(self) -> None:
+        raw = pd.DataFrame([
+            ['200', '10001', 'ALPHA', 1, '2011-11-01 09:00:00'],
+            ['200', '10001', 'ALPHA', 2, '2011-11-01 09:01:00'],
+            ['100', '10002', 'BETA', 3, '2011-11-02 09:00:00'],
+        ], columns=['Invoice', 'StockCode', 'Description', 'Quantity', 'InvoiceDate'])
+        dataset, _ = PROCESSOR.build_dataset(raw, 'fixture.xlsx')
+        self.assertEqual([order['id'] for order in dataset['orders']], ['200', '100'])
+        self.assertEqual(dataset['orders'][0]['items'][0]['quantity'], 3)
+        self.assertEqual(dataset, PROCESSOR.build_dataset(raw, 'fixture.xlsx')[0])
+
+    def test_missing_columns_and_invalid_quantities_are_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, 'Missing required'):
+            PROCESSOR.build_dataset(pd.DataFrame(), 'fixture.xlsx')
+        dataset, _ = PROCESSOR.build_dataset(fixture_frame(), 'fixture.xlsx')
+        dataset['orders'][0]['items'][0]['quantity'] = float('nan')
+        with self.assertRaises(ValueError):
+            PROCESSOR.validate_dataset(dataset)
+
     def test_clean_month_applies_cancellation_quantity_and_code_rules(self) -> None:
         clean, report = PROCESSOR.clean_month(fixture_frame(), "2011-11")
         self.assertEqual(clean["StockCode"].tolist(), ["10001", "10001", "10002A"])

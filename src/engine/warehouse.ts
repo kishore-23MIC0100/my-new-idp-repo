@@ -49,7 +49,7 @@ export const VALID_SLOTS: readonly Slot[] = RACK_COLUMNS.flatMap((rackX, rackInd
 for (const slot of VALID_SLOTS) slotsById.set(slot.id, slot)
 
 export function isInsideWarehouse(point: GridPoint): boolean {
-  return point.x >= 0 && point.x < WAREHOUSE_SIZE.width && point.y >= 0 && point.y < WAREHOUSE_SIZE.height
+  return Number.isInteger(point.x) && Number.isInteger(point.y) && point.x >= 0 && point.x < WAREHOUSE_SIZE.width && point.y >= 0 && point.y < WAREHOUSE_SIZE.height
 }
 
 export function isTraversable(point: GridPoint): boolean {

@@ -11,7 +11,8 @@ import json
 import re
 from collections import Counter
 from dataclasses import asdict, dataclass
-from datetime import date
+import math
+import hashlib
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +34,7 @@ class ProcessingConfig:
     product_code_rule: str = "StockCode matches ^\\d{5}[A-Za-z]{0,2}$"
     outside_selected_product_rule: str = "Discarded from exported orders; orders with no selected products are excluded."
     order_grouping_rule: str = "Invoice lines are aggregated by invoice and product code."
+    timezone_rule: str = "Naive source timestamps retained as UK local wall time; no timezone conversion."
 
 
 def standardize_frame(raw: pd.DataFrame) -> pd.DataFrame:
@@ -54,6 +56,9 @@ def clean_month(raw: pd.DataFrame, period: str) -> tuple[pd.DataFrame, Counter[s
     """Apply declared eligibility rules and return product order lines for one month."""
     frame = standardize_frame(raw)
     report: Counter[str] = Counter(rows_read=len(frame))
+    missing_date = frame["InvoiceDate"].isna()
+    report["excluded_missing_timestamp"] = int(missing_date.sum())
+    frame = frame.loc[~missing_date].copy()
     target = pd.Period(period, freq="M")
     in_period = frame["InvoiceDate"].dt.to_period("M").eq(target)
     report["rows_outside_period"] = int((~in_period).sum())
@@ -68,11 +73,7 @@ def clean_month(raw: pd.DataFrame, period: str) -> tuple[pd.DataFrame, Counter[s
     report["excluded_missing_invoice"] = int(missing_invoice.sum())
     frame = frame.loc[~missing_invoice].copy()
 
-    missing_date = frame["InvoiceDate"].isna()
-    report["excluded_missing_timestamp"] = int(missing_date.sum())
-    frame = frame.loc[~missing_date].copy()
-
-    positive_quantity = frame["Quantity"].gt(0)
+    positive_quantity = frame["Quantity"].gt(0) & frame["Quantity"].map(math.isfinite)
     report["excluded_nonpositive_quantity"] = int((~positive_quantity).sum())
     frame = frame.loc[positive_quantity].copy()
 
@@ -80,6 +81,8 @@ def clean_month(raw: pd.DataFrame, period: str) -> tuple[pd.DataFrame, Counter[s
     report["excluded_invalid_or_nonproduct_code"] = int((~product).sum())
     frame = frame.loc[product].copy()
     report["eligible_order_lines"] = len(frame)
+    report["missing_descriptions_filled"] = int((frame["Description"].isna() | frame["Description"].eq("")).sum())
+    frame["Description"] = frame["Description"].fillna("")
     return frame, report
 
 
@@ -113,6 +116,8 @@ def build_dataset(raw: pd.DataFrame, source_name: str, selected_product_count: i
         for row in ranked.itertuples(index=False)
     ]
 
+    invoice_dates = selected.groupby("Invoice")["InvoiceDate"].min()
+    selected["InvoiceDate"] = selected["Invoice"].map(invoice_dates)
     grouped = (
         selected.groupby(["Invoice", "InvoiceDate", "StockCode"], as_index=False, sort=True)["Quantity"]
         .sum()
@@ -122,6 +127,7 @@ def build_dataset(raw: pd.DataFrame, source_name: str, selected_product_count: i
     for (invoice, timestamp), lines in grouped.groupby(["Invoice", "InvoiceDate"], sort=True):
         items = [{"productId": line.StockCode, "quantity": int(line.Quantity) if float(line.Quantity).is_integer() else float(line.Quantity)} for line in lines.itertuples(index=False)]
         orders.append({"id": str(invoice), "timestamp": pd.Timestamp(timestamp).isoformat(), "items": items})
+    orders.sort(key=lambda order: (order["timestamp"], order["id"]))
 
     config = ProcessingConfig(selected_product_count=selected_product_count)
     dataset = {
@@ -132,7 +138,6 @@ def build_dataset(raw: pd.DataFrame, source_name: str, selected_product_count: i
             "sourceSheet": SOURCE_SHEET,
             "license": "CC BY 4.0",
             "selectedPeriod": SELECTED_PERIOD,
-            "generatedOn": date.today().isoformat(),
         },
         "processingConfig": asdict(config),
         "products": products,
@@ -148,6 +153,8 @@ def build_dataset(raw: pd.DataFrame, source_name: str, selected_product_count: i
             "eligible_invoices": int(eligible["Invoice"].nunique()),
             "selected_products": len(products),
             "selected_product_order_lines": int(len(selected)),
+            "excluded_unselected_product_lines": int(len(eligible) - len(selected)),
+            "invoices_without_selected_products": int(eligible["Invoice"].nunique() - selected["Invoice"].nunique()),
             "exported_orders": len(orders),
             "exported_order_items": sum(len(order["items"]) for order in orders),
             "exported_units": float(sum(item["quantity"] for order in orders for item in order["items"])),
@@ -167,17 +174,21 @@ def validate_dataset(dataset: dict[str, Any]) -> None:
     if not products or len(product_ids) != len(set(product_ids)):
         raise ValueError("Products must be present and have unique IDs")
     known = set(product_ids)
+    if any(not isinstance(p["id"], str) or not p["id"] or not math.isfinite(p["pickFrequency"]) or p["pickFrequency"] <= 0 for p in products):
+        raise ValueError("Invalid product fields")
+    order_ids: set[str] = set()
     previous: tuple[str, str] | None = None
     for order in dataset["orders"]:
-        if not order["id"] or not order["items"]:
+        if not order["id"] or order["id"] in order_ids or not order["items"]:
             raise ValueError("Exported orders must have an ID and at least one item")
+        order_ids.add(order["id"])
         key = (order["timestamp"], order["id"])
         if previous and key < previous:
             raise ValueError("Orders must be in stable chronological order")
         previous = key
         seen: set[str] = set()
         for item in order["items"]:
-            if item["productId"] not in known or item["productId"] in seen or item["quantity"] <= 0:
+            if item["productId"] not in known or item["productId"] in seen or not math.isfinite(item["quantity"]) or item["quantity"] <= 0:
                 raise ValueError("Order items must reference selected products once with a positive quantity")
             seen.add(item["productId"])
 
@@ -191,6 +202,8 @@ def main() -> None:
     args = parser.parse_args()
     raw = pd.read_excel(args.source, sheet_name=SOURCE_SHEET, engine="openpyxl")
     dataset, report = build_dataset(raw, args.source.name, args.product_count)
+    dataset["metadata"]["sourceSha256"] = hashlib.sha256(args.source.read_bytes()).hexdigest()
+    report["source"] = dataset["metadata"]
     for path, payload in ((args.output, dataset), (args.report, report)):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

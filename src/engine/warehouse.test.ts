@@ -29,6 +29,8 @@ describe('warehouse route engine', () => {
   })
 
   it('returns null for invalid or obstructed route endpoints', () => {
+    expect(findShortestRoute(PACKING_DOCK, { x: 0.5, y: 2 })).toBeNull()
+    expect(findShortestRoute(PACKING_DOCK, { x: NaN, y: 2 })).toBeNull()
     expect(findShortestRoute(PACKING_DOCK, { x: 5, y: 4 })).toBeNull()
     expect(routeToSlot(PACKING_DOCK, 'missing-slot')).toBeNull()
   })

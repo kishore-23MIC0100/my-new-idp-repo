@@ -12,7 +12,10 @@ describe('layout swapping', () => {
     expect(() => validateLayout(swapped, products)).not.toThrow()
   })
 
-  it('rejects placement into an empty/non-editable slot', () => {
-    expect(() => swapProductIntoSlot({ A: VALID_SLOTS[0].id }, 'A', VALID_SLOTS[2].id)).toThrow('not occupied')
+  it('moves into a valid empty slot and rejects an invalid slot without mutation', () => {
+    const initial = { A: VALID_SLOTS[0].id }
+    expect(swapProductIntoSlot(initial, 'A', VALID_SLOTS[2].id)).toEqual({ A: VALID_SLOTS[2].id })
+    expect(() => swapProductIntoSlot(initial, 'A', 'missing')).toThrow('Invalid')
+    expect(initial.A).toBe(VALID_SLOTS[0].id)
   })
 })
