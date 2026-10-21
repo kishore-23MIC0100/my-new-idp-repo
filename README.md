@@ -15,11 +15,11 @@ An interactive browser-based warehouse slotting game built from a processed UCI 
 
 ## Technology
 
-React, Vite, TypeScript, Three.js, React Three Fiber, Drei, Vitest, Python, pandas, and openpyxl.
+React, Vite, TypeScript, Three.js, React Three Fiber, Drei, Recharts, Lucide React, Vitest, Python, pandas, and openpyxl.
 
 ## Dataset and processing
 
-The source is [UCI Online Retail II](https://archive.ics.uci.edu/dataset/502/online+retail+ii), licensed CC BY 4.0. The pipeline reads `Year 2010-2011`, selects November 2011, and removes cancelled invoices, missing invoice/timestamp records, non-positive quantities, and non-product codes. The top 100 products are selected by eligible units ordered. Lines outside that set are excluded from the compact browser dataset and repeated products on an invoice are aggregated.
+The source is [UCI Online Retail II](https://archive.ics.uci.edu/dataset/502/online+retail+ii), licensed CC BY 4.0. The pipeline reads `Year 2010-2011`, selects November 2011, and removes cancelled invoices, missing invoice/timestamp records, non-positive quantities, and non-product codes. The top 100 products are selected by eligible units ordered. Lines outside that set are excluded from the compact browser dataset and repeated products on an invoice are aggregated. To substitute another Retail II export, provide equivalent `Invoice`, `StockCode`, `Description`, `Quantity`, and `InvoiceDate` columns to the preprocessing script.
 
 Actual output: 83,215 eligible source lines, 100 products, 2,341 orders, 14,043 product picks, and 266,506 handled units. See [the data-quality report](docs/data-quality-report-2011-11.json).
 

@@ -36,6 +36,7 @@ export function App() {
   const [notice, setNotice] = useState('Loading validated UCI Online Retail II data…')
   const [dataset, setDataset] = useState<RetailDataset | null>(null)
   const [eventIndex, setEventIndex] = useState(0)
+  const [orderIndex, setOrderIndex] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
   const [selectedProductId, setSelectedProductId] = useState<string>()
@@ -85,7 +86,7 @@ export function App() {
     const layout = activeScenario === 'original' ? originalLayout : activeScenario === 'automatic' ? automaticLayout : (playerLayout ?? originalLayout)
     return { layout, result: comparison[activeScenario] }
   }, [activeScenario, automaticLayout, comparison, dataset, originalLayout, playerLayout])
-  const activeOrder = dataset?.orders[0]
+  const activeOrder = dataset?.orders[orderIndex]
   const activeEvents = useMemo(() => simulation && activeOrder ? simulation.result.events.filter((event) => event.orderId === activeOrder.id) : [], [simulation, activeOrder])
   const activeEvent = activeEvents[eventIndex]
   const selectedProduct = dataset?.products.find((product) => product.id === (selectedProductId ?? activeEvent?.productId))
@@ -94,15 +95,19 @@ export function App() {
     if (!playing || !activeEvents.length) return
     const timer = window.setInterval(() => setEventIndex((current) => {
       const next = current + 1
-      if (next >= activeEvents.length) { setPlaying(false); return current }
+      if (next >= activeEvents.length) {
+        if (!dataset || orderIndex >= dataset.orders.length - 1) { setPlaying(false); return current }
+        setOrderIndex((index) => index + 1)
+        return 0
+      }
       return next
     }), Math.max(600, 1800 / speed))
     return () => window.clearInterval(timer)
-  }, [playing, speed, activeEvents.length])
+  }, [playing, speed, activeEvents.length, dataset, orderIndex])
 
   const togglePlayback = () => {
     if (!activeEvents.length) return
-    if (eventIndex >= activeEvents.length - 1) setEventIndex(0)
+    if (eventIndex >= activeEvents.length - 1) { setEventIndex(0); setOrderIndex(0) }
     setPlaying((value) => !value)
   }
   const cycleSpeed = () => setSpeed((current) => current === 1 ? 2 : current === 2 ? 4 : 1)
@@ -111,6 +116,7 @@ export function App() {
   const selectScenario = (next: Scenario) => {
     setPlaying(false)
     setEventIndex(0)
+    setOrderIndex(0)
     setSelectedProductId(undefined)
     setActiveScenario(next)
     setNotice(`Showing ${scenarioName(next).toLowerCase()}; all routes and metrics use this layout.`)
@@ -166,15 +172,15 @@ export function App() {
       <Kpi glyph="87" label="ROUTE EFFICIENCY" value={comparison ? `${comparison.automaticDistanceReductionPercent?.toFixed(1) ?? 'n.a.'}%` : '—'} detail="Fast-mover baseline vs. original" tone="lime" />
     </section>}
 
-    {mode === 'analytics' && comparison ? <AnalyticsView comparison={comparison} /> : <div className={mode === 'layout' ? 'main-grid layout-mode' : 'main-grid'}>
+    {mode === 'analytics' && comparison && dataset ? <AnalyticsView comparison={comparison} products={dataset.products} /> : <div className={mode === 'layout' ? 'main-grid layout-mode' : 'main-grid'}>
       {mode === 'layout' && dataset && playerLayout ? <LayoutLab products={dataset.products} layout={playerLayout} selectedProductId={selectedProductId} onSelectProduct={setSelectedProductId} onSwap={swapIntoSlot} onUndo={undoLayout} onReset={resetLayout} onAutomatic={applyAutomaticToPlayer} canUndo={layoutHistory.length > 0} /> : <aside className="panel left-panel">
         <div className="rail-nav" aria-label="Dashboard navigation"><button className={mode === 'twin' ? 'active' : ''} onClick={() => setMode('twin')}><b>▣</b> Dashboard</button><button onClick={() => setMode('twin')}><b>◇</b> 3D Warehouse</button><button onClick={() => { setActiveScenario('player'); setMode('layout') }}><b>▦</b> Product Slotting</button><button onClick={() => setMode('analytics')}><b>▥</b> Analytics</button></div>
         <div className="side-divider" />
         <div className="panel-title"><span>01</span><h2>Control surface</h2></div>
         <div className="control-group"><label htmlFor="layout-scenario">ACTIVE LAYOUT</label><select className="select-control" id="layout-scenario" value={activeScenario} onChange={(event) => selectScenario(event.target.value as Scenario)}><option value="original">Original layout</option><option value="automatic">Automatic baseline</option><option value="player">Player layout</option></select></div>
-        <div className="control-group"><label>PRODUCT LOOKUP</label><input aria-label="Loaded product count" placeholder={`${productCount} validated SKUs loaded`} disabled /></div>
+        <div className="control-group"><label htmlFor="product-search">PRODUCT LOOKUP</label><input id="product-search" aria-label="Search loaded products" placeholder={`${productCount} validated SKUs loaded`} onChange={(event) => { const match = dataset?.products.find((product) => `${product.code} ${product.description}`.toLowerCase().includes(event.target.value.toLowerCase())); if (match && event.target.value) setSelectedProductId(match.id) }} /></div>
         <div className="section-rule" />
-        <div className="simulation-buttons"><button className="run" disabled={!activeEvents.length} onClick={togglePlayback}>{playing ? 'Ⅱ Pause' : '▶ Start'}</button><button disabled={!activeEvents.length} onClick={() => { setPlaying(false); setEventIndex(0); setNotice('Replay returned to the first scored pick.') }}>↶ Reset</button></div>
+        <div className="simulation-buttons"><button className="run" disabled={!activeEvents.length} onClick={togglePlayback}>{playing ? 'Ⅱ Pause' : '▶ Start'}</button><button disabled={!activeEvents.length} onClick={() => { setPlaying(false); setEventIndex(0); setOrderIndex(0); setNotice('Replay returned to the first scored pick.') }}>↶ Reset</button></div>
         <div className="speed-control"><label>PLAYBACK SPEED <b>{speed}×</b></label><button onClick={cycleSpeed}>Adjust speed</button></div>
         <div className="layers-row"><div><label>WAREHOUSE LAYERS</label><small>Route and product bins</small></div><button className={showLayers ? 'toggle on' : 'toggle'} aria-label="Toggle warehouse layers" onClick={() => setShowLayers(!showLayers)}><span /></button></div>
         <ul className={showLayers ? 'layer-list' : 'layer-list hidden'}><li><i className="cyan" /> Scored route <b>LIVE</b></li><li><i className="magenta" /> Picker target <b>LIVE</b></li><li><i className="lime" /> Product slots <b>{productCount}</b></li></ul>

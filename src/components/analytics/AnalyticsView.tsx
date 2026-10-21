@@ -1,8 +1,11 @@
 import type { CSSProperties } from 'react'
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { LayoutComparison, SimulationResult } from '../../engine/simulation'
+import type { Product } from '../../engine/simulation'
 
 type AnalyticsViewProps = {
   comparison: LayoutComparison
+  products: readonly Product[]
 }
 
 const formatDistance = (value: number) => `${Math.round(value).toLocaleString()} m`
@@ -21,8 +24,19 @@ function RackHeatmap({ result }: { result: SimulationResult }) {
   </div>
 }
 
-export function AnalyticsView({ comparison }: AnalyticsViewProps) {
+function orderDistances(result: SimulationResult) {
+  const totals = new Map<string, number>()
+  for (const event of result.events) totals.set(event.orderId, (totals.get(event.orderId) ?? 0) + event.travelDistanceMeters)
+  return [...totals.values()]
+}
+
+export function AnalyticsView({ comparison, products }: AnalyticsViewProps) {
   const { original, automatic, player } = comparison
+  const originalDistances = orderDistances(original)
+  const automaticDistances = orderDistances(automatic)
+  const playerDistances = orderDistances(player)
+  const chartData = originalDistances.map((distance, index) => ({ order: index + 1, original: Math.round(distance), automatic: Math.round(automaticDistances[index] ?? 0), player: Math.round(playerDistances[index] ?? 0) }))
+  const rankedProducts = [...products].sort((a, b) => b.pickFrequency - a.pickFrequency).slice(0, 6)
   return <section className="analytics-view" aria-label="Simulation analytics" tabIndex={-1}>
     <div className="analytics-intro"><div><p className="eyebrow">SAME ORDERS · SAME ROUTES · DIFFERENT SLOT ASSIGNMENT</p><h2>Measured layout comparison</h2></div><p>Walking and handling time are calculated separately. Improvement uses the original layout as its denominator.</p></div>
     <div className="analytics-summary">
@@ -36,7 +50,8 @@ export function AnalyticsView({ comparison }: AnalyticsViewProps) {
       <article className="analytics-card"><h3>Player rack-visit heatmap</h3><p className="method-note">Counts come directly from scored pick events for the current player layout. Brighter cells have more visits.</p><RackHeatmap result={player} /></article>
     </div>
     <div className="analytics-grid explanation-grid">
-      <article className="analytics-card"><h3>Why the baseline changes distance</h3><p>The automatic layout ranks products by eligible units ordered and fills the lowest round-trip dock-cost slots first. It is a reproducible frequency-aware heuristic, not a predictive AI model.</p></article>
+      <article className="analytics-card"><h3>Distance by order</h3><div className="distance-chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={chartData}><CartesianGrid stroke="#273650" strokeDasharray="3 3" /><XAxis dataKey="order" tick={{ fill: '#8da0b9', fontSize: 9 }} /><YAxis tick={{ fill: '#8da0b9', fontSize: 9 }} /><Tooltip contentStyle={{ background: '#0c1629', border: '1px solid #2d3c56' }} /><Legend wrapperStyle={{ fontSize: 10 }} /><Line type="monotone" dataKey="original" name="Original" stroke="#6b8caf" dot={false} /><Line type="monotone" dataKey="automatic" name="Automatic" stroke="#39e6a5" dot={false} /><Line type="monotone" dataKey="player" name="Player" stroke="#ed4eb7" dot={false} /></LineChart></ResponsiveContainer></div></article>
+      <article className="analytics-card"><h3>Fast-moving products</h3><div className="category-breakdown">{rankedProducts.map((product) => <div key={product.id}><span>{product.id}</span><b>{product.pickFrequency.toLocaleString()} units</b></div>)}</div></article>
       <article className="analytics-card"><h3>Interpretation</h3><p>A positive percentage means less walking than the documented original layout. A negative percentage means the candidate layout worsened walking distance. Travel and handling assumptions apply unchanged to every scenario.</p></article>
     </div>
   </section>
