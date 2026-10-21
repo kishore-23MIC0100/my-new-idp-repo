@@ -59,31 +59,88 @@ function ProductBins({ products, layout, selectedProductId, activeEvent, onSelec
   </>
 }
 
-function Picker({ activeEvent: event, playing, playbackSpeed }: Pick<DigitalTwinProps, 'activeEvent' | 'playing' | 'playbackSpeed'>) {
+
+function Picker({
+  activeEvent: event,
+  playing,
+  playbackSpeed,
+}: Pick<DigitalTwinProps, 'activeEvent' | 'playing' | 'playbackSpeed'>) {
   const picker = useRef<Group>(null)
-  const route = useMemo(() => event?.route.map(toWorld) ?? [toWorld(PACKING_DOCK)], [event?.orderId, event?.productId, event?.slotId, event?.route])
-  const animation = useRef({ eventKey: '', startedAt: 0 })
-  useFrame(({ clock }) => {
+
+  const route = useMemo(
+    () => event?.route.map(toWorld) ?? [toWorld(PACKING_DOCK)],
+    [event?.orderId, event?.productId, event?.slotId, event?.route],
+  )
+
+  const animation = useRef({ eventKey: '', elapsed: 0 })
+
+  useFrame((_, delta) => {
     if (!picker.current || !route.length) return
-    const eventKey = event ? `${event.orderId}-${event.productId}-${event.slotId}` : 'dock'
-    if (animation.current.eventKey !== eventKey) animation.current = { eventKey, startedAt: clock.getElapsedTime() }
-    const duration = Math.max(0.45, route.length * 0.11) / playbackSpeed
-    const progress = playing && route.length > 1 ? Math.min(1, (clock.getElapsedTime() - animation.current.startedAt) / duration) : 0
+
+    const eventKey = event
+      ? `${event.orderId}-${event.productId}-${event.slotId}`
+      : 'dock'
+
+    // Start a fresh animation only when the active pick changes.
+    if (animation.current.eventKey !== eventKey) {
+      animation.current = { eventKey, elapsed: 0 }
+    }
+
+    // Accumulate movement time only while playback is running.
+    // Pausing freezes the picker at its current position.
+    if (playing) {
+      animation.current.elapsed += delta * Math.max(0.1, playbackSpeed)
+    }
+
+    const duration = Math.max(0.45, route.length * 0.11)
+    const progress = Math.min(1, animation.current.elapsed / duration)
     const pathPosition = progress * (route.length - 1)
-    const segment = Math.min(Math.floor(pathPosition), route.length - 1)
+
+    const segment = Math.min(
+      Math.floor(pathPosition),
+      route.length - 1,
+    )
     const nextSegment = Math.min(segment + 1, route.length - 1)
     const amount = pathPosition - segment
+
     const point = route[segment]
     const nextPoint = route[nextSegment]
-    picker.current.position.set(point[0] + (nextPoint[0] - point[0]) * amount, 0.55, point[2] + (nextPoint[2] - point[2]) * amount)
-    if (nextSegment !== segment) picker.current.rotation.y = Math.atan2(nextPoint[0] - point[0], nextPoint[2] - point[2])
+
+    picker.current.position.set(
+      point[0] + (nextPoint[0] - point[0]) * amount,
+      0.55,
+      point[2] + (nextPoint[2] - point[2]) * amount,
+    )
+
+    if (nextSegment !== segment) {
+      picker.current.rotation.y = Math.atan2(
+        nextPoint[0] - point[0],
+        nextPoint[2] - point[2],
+      )
+    }
   })
-  return <group ref={picker} position={toWorld(PACKING_DOCK)}>
-    <mesh castShadow><capsuleGeometry args={[0.28, 0.75, 6, 10]} /><meshStandardMaterial color="#ff007a" emissive="#3a001c" emissiveIntensity={0.8} /></mesh>
-    <mesh position={[0, 0.68, 0]} castShadow><sphereGeometry args={[0.25, 16, 16]} /><meshStandardMaterial color="#f2c3a0" /></mesh>
-    <pointLight color="#ff007a" intensity={2.5} distance={3} />
-  </group>
+
+  return (
+    <group ref={picker} position={toWorld(PACKING_DOCK)}>
+      <mesh castShadow>
+        <capsuleGeometry args={[0.28, 0.75, 6, 10]} />
+        <meshStandardMaterial
+          color="#ff007a"
+          emissive="#3a001c"
+          emissiveIntensity={0.8}
+        />
+      </mesh>
+
+      <mesh position={[0, 0.68, 0]} castShadow>
+        <sphereGeometry args={[0.25, 16, 16]} />
+        <meshStandardMaterial color="#f2c3a0" />
+      </mesh>
+
+      <pointLight color="#ff007a" intensity={2.5} distance={3} />
+    </group>
+  )
 }
+
 
 function WarehouseScene({ products, layout, activeEvent, playing, playbackSpeed, visibleLayer, photorealPlate, selectedProductId, onSelectProduct }: DigitalTwinProps) {
   const routePoints = useMemo(() => activeEvent?.route.map((point) => {
