@@ -41,18 +41,19 @@ function Forklift({ position }: { position: [number, number, number] }) {
   return <group position={position}><mesh castShadow><boxGeometry args={[1.05, 0.7, 1.55]} /><meshStandardMaterial color="#f2b52b" metalness={0.25} roughness={0.5} /></mesh><mesh position={[0, 0.9, 0.55]}><boxGeometry args={[0.08, 1.7, 0.08]} /><meshStandardMaterial color="#26384f" /></mesh><mesh position={[0, 0.35, 1.13]}><boxGeometry args={[0.78, 0.08, 0.08]} /><meshStandardMaterial color="#26384f" /></mesh></group>
 }
 
-function ProductBins({ products, layout, selectedProductId, onSelectProduct, visibleLayer }: Pick<DigitalTwinProps, 'products' | 'layout' | 'selectedProductId' | 'onSelectProduct' | 'visibleLayer'>) {
+function ProductBins({ products, layout, selectedProductId, activeEvent, onSelectProduct, visibleLayer, photorealPlate }: Pick<DigitalTwinProps, 'products' | 'layout' | 'selectedProductId' | 'activeEvent' | 'onSelectProduct' | 'visibleLayer' | 'photorealPlate'>) {
   const maxFrequency = Math.max(...products.map((product) => product.pickFrequency), 1)
   return <>
     {products.map((product) => {
       const slot = getSlot(layout[product.id])
       if (!slot || (visibleLayer !== 'all' && slot.level !== visibleLayer)) return null
+      if (photorealPlate && product.id !== selectedProductId && product.id !== activeEvent?.productId) return null
       const [x, , z] = toWorld(slot.position)
       const intensity = product.pickFrequency / maxFrequency
-      const color = product.id === selectedProductId ? '#ff007a' : intensity > 0.15 ? '#00b8d4' : '#45688f'
+      const color = product.id === selectedProductId ? '#ff2cbf' : product.id === activeEvent?.productId ? '#22e875' : intensity > 0.15 ? '#00d9f5' : '#45688f'
       return <mesh key={product.id} position={[x, 0.45 + slot.level * 0.95, z]} onClick={(event) => { event.stopPropagation(); onSelectProduct(product.id) }} castShadow>
-        <boxGeometry args={[0.6, 0.45, 0.72]} />
-        <meshStandardMaterial color={color} emissive={product.id === selectedProductId ? '#5c002c' : '#00111b'} emissiveIntensity={product.id === selectedProductId ? 1.8 : 0.25} metalness={0.2} roughness={0.55} />
+        <boxGeometry args={photorealPlate ? [0.92, 0.7, 0.92] : [0.6, 0.45, 0.72]} />
+        <meshStandardMaterial color={color} emissive={product.id === selectedProductId ? '#8a005d' : product.id === activeEvent?.productId ? '#00683c' : '#00111b'} emissiveIntensity={photorealPlate ? 2.8 : product.id === selectedProductId ? 1.8 : 0.25} metalness={0.2} roughness={0.38} />
       </mesh>
     })}
   </>
@@ -101,7 +102,7 @@ function WarehouseScene({ products, layout, activeEvent, playing, playbackSpeed,
     <directionalLight position={[18, 34, 14]} intensity={4.4} castShadow shadow-mapSize={[2048, 2048]} />
     <pointLight position={[dockX, 8, dockZ]} color="#20dfff" intensity={10} distance={28} />
     {!photorealPlate && <><pointLight position={[10, 10, 4]} color="#2c8fff" intensity={7} distance={24} /><mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[WAREHOUSE_SIZE.width * CELL_SIZE_METERS, WAREHOUSE_SIZE.height * CELL_SIZE_METERS]} /><meshStandardMaterial color="#1a2940" roughness={0.68} metalness={0.28} /></mesh><Grid args={[WAREHOUSE_SIZE.width * CELL_SIZE_METERS, WAREHOUSE_SIZE.height * CELL_SIZE_METERS]} cellSize={CELL_SIZE_METERS} cellThickness={0.75} cellColor="#446a85" sectionSize={CELL_SIZE_METERS * 5} sectionColor="#e6c44c" fadeDistance={90} fadeStrength={0.45} position={[0, 0.01, 0]} />{RACK_BLOCKS.map((rack) => <Rack key={rack.id} {...rack} visibleLayer={visibleLayer} onSelect={rackProducts[rack.id] ? () => onSelectProduct(rackProducts[rack.id]) : undefined} />)}{[0, 1, 2].map((index) => <Truck key={index} position={[dockX - 5.2, 0.85, dockZ - 8 + index * 5.2]} />)}<Forklift position={[4, 0.45, 4]} /><Forklift position={[11, 0.45, -6]} /><group position={[dockX, 0.15, dockZ]}><mesh><boxGeometry args={[4.2, 0.25, 4.2]} /><meshStandardMaterial color="#07576a" emissive="#0087a4" emissiveIntensity={1.2} /></mesh><Text position={[0, 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]} color="#e5fdff" fontSize={0.42}>DOCK / DISPATCH</Text></group><group position={[20, 0.15, 10]}><mesh><boxGeometry args={[3.6, 0.25, 3.6]} /><meshStandardMaterial color="#0b7f55" emissive="#00a86b" emissiveIntensity={0.8} /></mesh><Text position={[0, 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]} color="#eafff5" fontSize={0.38}>PACKING</Text></group></>}
-    <ProductBins products={products} layout={layout} selectedProductId={selectedProductId} onSelectProduct={onSelectProduct} visibleLayer={visibleLayer} />
+    <ProductBins products={products} layout={layout} selectedProductId={selectedProductId} activeEvent={activeEvent} onSelectProduct={onSelectProduct} visibleLayer={visibleLayer} photorealPlate={photorealPlate} />
     {routePoints.length > 1 && <Line points={routePoints} color="#00e5ff" lineWidth={3.5} transparent opacity={0.9} />}
     <Picker activeEvent={activeEvent} playing={playing} playbackSpeed={playbackSpeed} />
     <OrbitControls makeDefault minDistance={18} maxDistance={70} maxPolarAngle={Math.PI / 2.1} target={[0, 0, 0]} />

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { ErrorBoundary } from './ErrorBoundary'
 import { LayoutLab } from '../components/layout/LayoutLab'
 import { AnalyticsView } from '../components/analytics/AnalyticsView'
@@ -154,6 +154,8 @@ export function App() {
   }
   const resetLayout = () => { if (originalLayout) { setLayoutHistory([]); setPlayerLayout(originalLayout); sessionStorage.removeItem('nexai-player-layout'); setActiveScenario('player'); setEventIndex(0); setPlaying(false); setNotice('Reset player layout to the documented original arrangement.') } }
   const applyAutomaticToPlayer = () => { if (dataset) applyLayout(createFastMoverLayout(dataset.products), 'Applied the frequency-aware fast-mover baseline to your player layout.') }
+  const rackHeatCells = simulation ? Object.entries(simulation.result.rackVisits).slice(0, 36) : []
+  const maxRackVisits = Math.max(1, ...rackHeatCells.map(([, visits]) => visits))
 
   return <main className="app-shell">
     <header className="topbar">
@@ -215,7 +217,7 @@ export function App() {
     {mode !== 'analytics' && <section className="bottom-zone reference-bottom">
       <article className="comparison-panel"><div className="bottom-head"><span>◇</span><strong>Layout Comparison</strong><button onClick={() => setMode('analytics')}>Open analytics</button></div><div className="scenario-grid">{comparison && ([['Original', comparison.original, 'original'], ['Automatic baseline', comparison.automatic, 'automatic'], ['Player layout', comparison.player, 'player']] as const).map(([label, result, scenario]) => <button key={scenario} className={activeScenario === scenario ? 'scenario active' : 'scenario'} onClick={() => selectScenario(scenario)}><b>{label}</b><span>Total distance</span><strong>{(result.metrics.totalWalkingDistanceMeters / 1000).toFixed(2)} km</strong><span>Picking time</span><em>{formatMinutes(result.metrics.totalEstimatedSeconds)} min</em></button>)}</div></article>
       <article className="route-chart"><div className="bottom-head"><span>⌁</span><strong>Distance by order</strong><small>Scored events</small></div><div className="spark-lines" aria-label="Order route distance comparison"><i className="original" /><i className="automatic" /><i className="player" /></div><div className="spark-key"><span>Original</span><span>Automatic</span><span>Player</span></div></article>
-      <article className="rack-summary"><div className="bottom-head"><span>▦</span><strong>Rack Visit Heatmap</strong><button onClick={() => setMode('analytics')}>All racks</button></div><div className="mini-heatmap">{simulation ? Object.entries(simulation.result.rackVisits).slice(0, 36).map(([rack, visits]) => <i key={rack} title={`${rack}: ${visits} visits`} style={{ '--visit': visits } as CSSProperties} />) : null}</div></article>
+      <article className="rack-summary"><div className="bottom-head"><span>▦</span><strong>Rack Visit Heatmap</strong><button onClick={() => setMode('analytics')}>All racks</button></div><div className="mini-heatmap">{rackHeatCells.map(([rack, visits]) => { const intensity = visits / maxRackVisits; return <i key={rack} title={`${rack}: ${visits} visits`} style={{ backgroundColor: `hsl(${204 - Math.round(intensity * 198)} 92% ${30 + Math.round(intensity * 30)}%)`, boxShadow: `0 0 ${3 + Math.round(intensity * 10)}px hsl(${204 - Math.round(intensity * 198)} 95% 55% / ${0.25 + intensity * 0.65})` }} /> })}</div></article>
     </section>}
     <footer className="notice" role="status"><span>◆</span>{notice}<button onClick={() => setNotice('Click a product bin to inspect it. Orbit, pan, and zoom the warehouse with the pointer.')}>Help</button></footer>
   </main>
