@@ -10,6 +10,7 @@ type DigitalTwinProps = {
   layout: ProductLayout
   activeEvent?: PickEvent
   playing: boolean
+  playbackSpeed: number
   onSelectProduct: (productId: string) => void
   selectedProductId?: string
 }
@@ -47,14 +48,24 @@ function ProductBins({ products, layout, selectedProductId, onSelectProduct }: P
   </>
 }
 
-function Picker({ event, playing }: { event?: PickEvent; playing: boolean }) {
+function Picker({ activeEvent: event, playing, playbackSpeed }: Pick<DigitalTwinProps, 'activeEvent' | 'playing' | 'playbackSpeed'>) {
   const picker = useRef<Group>(null)
-  const route = useMemo(() => event?.route.map(toWorld) ?? [toWorld(PACKING_DOCK)], [event])
+  const route = useMemo(() => event?.route.map(toWorld) ?? [toWorld(PACKING_DOCK)], [event?.orderId, event?.productId, event?.slotId, event?.route])
+  const animation = useRef({ eventKey: '', startedAt: 0 })
   useFrame(({ clock }) => {
     if (!picker.current || !route.length) return
-    const pathIndex = playing && route.length > 1 ? Math.min(route.length - 1, Math.floor((clock.getElapsedTime() * 2) % route.length)) : route.length - 1
-    const point = route[pathIndex]
-    picker.current.position.set(point[0], 0.55, point[2])
+    const eventKey = event ? `${event.orderId}-${event.productId}-${event.slotId}` : 'dock'
+    if (animation.current.eventKey !== eventKey) animation.current = { eventKey, startedAt: clock.getElapsedTime() }
+    const duration = Math.max(0.45, route.length * 0.11) / playbackSpeed
+    const progress = playing && route.length > 1 ? Math.min(1, (clock.getElapsedTime() - animation.current.startedAt) / duration) : 0
+    const pathPosition = progress * (route.length - 1)
+    const segment = Math.min(Math.floor(pathPosition), route.length - 1)
+    const nextSegment = Math.min(segment + 1, route.length - 1)
+    const amount = pathPosition - segment
+    const point = route[segment]
+    const nextPoint = route[nextSegment]
+    picker.current.position.set(point[0] + (nextPoint[0] - point[0]) * amount, 0.55, point[2] + (nextPoint[2] - point[2]) * amount)
+    if (nextSegment !== segment) picker.current.rotation.y = Math.atan2(nextPoint[0] - point[0], nextPoint[2] - point[2])
   })
   return <group ref={picker} position={toWorld(PACKING_DOCK)}>
     <mesh castShadow><capsuleGeometry args={[0.28, 0.75, 6, 10]} /><meshStandardMaterial color="#ff007a" emissive="#3a001c" emissiveIntensity={0.8} /></mesh>
@@ -63,7 +74,7 @@ function Picker({ event, playing }: { event?: PickEvent; playing: boolean }) {
   </group>
 }
 
-function WarehouseScene({ products, layout, activeEvent, playing, selectedProductId, onSelectProduct }: DigitalTwinProps) {
+function WarehouseScene({ products, layout, activeEvent, playing, playbackSpeed, selectedProductId, onSelectProduct }: DigitalTwinProps) {
   const routePoints = useMemo(() => activeEvent?.route.map((point) => {
     const [x, y, z] = toWorld(point)
     return [x, y + 0.13, z] as [number, number, number]
@@ -81,7 +92,7 @@ function WarehouseScene({ products, layout, activeEvent, playing, selectedProduc
     <group position={[dockX, 0.15, dockZ]}><mesh><boxGeometry args={[3.2, 0.22, 3.2]} /><meshStandardMaterial color="#003a4c" emissive="#00647c" emissiveIntensity={1.2} /></mesh><Text position={[0, 0.17, 0]} rotation={[-Math.PI / 2, 0, 0]} color="#b5faff" fontSize={0.35}>PACK / DISPATCH</Text></group>
     <ProductBins products={products} layout={layout} selectedProductId={selectedProductId} onSelectProduct={onSelectProduct} />
     {routePoints.length > 1 && <Line points={routePoints} color="#00e5ff" lineWidth={3.5} transparent opacity={0.9} />}
-    <Picker event={activeEvent} playing={playing} />
+    <Picker activeEvent={activeEvent} playing={playing} playbackSpeed={playbackSpeed} />
     <OrbitControls makeDefault minDistance={18} maxDistance={70} maxPolarAngle={Math.PI / 2.1} target={[0, 0, 0]} />
   </>
 }

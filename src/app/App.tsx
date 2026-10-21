@@ -4,9 +4,10 @@ import { LayoutLab } from '../components/layout/LayoutLab'
 import { AnalyticsView } from '../components/analytics/AnalyticsView'
 import { swapProductIntoSlot } from '../engine/layout'
 import { createOriginalLayout, validateLayout } from '../engine/warehouse'
-import { compareLayouts, createFastMoverLayout, simulateOrders, type Product, type WarehouseOrder } from '../engine/simulation'
+import { compareLayouts, createFastMoverLayout, type Product, type WarehouseOrder } from '../engine/simulation'
 
 type Mode = 'twin' | 'layout' | 'analytics'
+type Scenario = 'original' | 'automatic' | 'player'
 type RetailProduct = Product & { code: string; description: string }
 type RetailDataset = { metadata: { selectedPeriod: string }; products: RetailProduct[]; orders: WarehouseOrder[] }
 
@@ -31,6 +32,7 @@ function Kpi({ label, value, detail, tone = 'cyan' }: { label: string; value: st
 
 function formatMeters(value: number) { return Math.round(value).toLocaleString() }
 function formatMinutes(value: number) { return (value / 60).toFixed(1) }
+function scenarioName(scenario: Scenario) { return scenario === 'original' ? 'Original layout' : scenario === 'automatic' ? 'Automatic baseline' : 'Player layout' }
 
 export function App() {
   const [mode, setMode] = useState<Mode>('twin')
@@ -46,6 +48,8 @@ export function App() {
   const [layoutHistory, setLayoutHistory] = useState<Record<string, string>[]>([])
   const [dataError, setDataError] = useState<string>()
   const [loadAttempt, setLoadAttempt] = useState(0)
+  const [activeScenario, setActiveScenario] = useState<Scenario>('original')
+  const [cameraSeed, setCameraSeed] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -77,13 +81,14 @@ export function App() {
     return () => { active = false }
   }, [loadAttempt])
 
-  const simulation = useMemo(() => {
-    if (!dataset) return null
-    const productIds = dataset.products.map((product) => product.id)
-    const layout = playerLayout ?? createOriginalLayout([...productIds].sort())
-    return { layout, result: simulateOrders(dataset.orders, productIds, layout) }
-  }, [dataset, playerLayout])
+  const originalLayout = useMemo(() => dataset ? createOriginalLayout([...dataset.products.map((product) => product.id)].sort()) : undefined, [dataset])
+  const automaticLayout = useMemo(() => dataset ? createFastMoverLayout(dataset.products) : undefined, [dataset])
   const comparison = useMemo(() => dataset ? compareLayouts(dataset.products, dataset.orders, playerLayout) : null, [dataset, playerLayout])
+  const simulation = useMemo(() => {
+    if (!dataset || !comparison || !originalLayout || !automaticLayout) return null
+    const layout = activeScenario === 'original' ? originalLayout : activeScenario === 'automatic' ? automaticLayout : (playerLayout ?? originalLayout)
+    return { layout, result: comparison[activeScenario] }
+  }, [activeScenario, automaticLayout, comparison, dataset, originalLayout, playerLayout])
   const activeOrder = dataset?.orders[0]
   const activeEvents = useMemo(() => simulation && activeOrder ? simulation.result.events.filter((event) => event.orderId === activeOrder.id) : [], [simulation, activeOrder])
   const activeEvent = activeEvents[eventIndex]
@@ -108,11 +113,20 @@ export function App() {
   const cycleSpeed = () => setSpeed((current) => current === 1 ? 2 : current === 2 ? 4 : 1)
   const productCount = dataset?.products.length ?? 0
   const orderCount = dataset?.orders.length ?? 0
-  const originalLayout = useMemo(() => dataset ? createOriginalLayout([...dataset.products.map((product) => product.id)].sort()) : undefined, [dataset])
+  const selectScenario = (next: Scenario) => {
+    setPlaying(false)
+    setEventIndex(0)
+    setSelectedProductId(undefined)
+    setActiveScenario(next)
+    setNotice(`Showing ${scenarioName(next).toLowerCase()}; all routes and metrics use this layout.`)
+  }
   const applyLayout = (next: Record<string, string>, message: string) => {
     if (playerLayout) setLayoutHistory((history) => [...history, playerLayout])
     setPlayerLayout(next)
     sessionStorage.setItem('nexai-player-layout', JSON.stringify(next))
+    setActiveScenario('player')
+    setEventIndex(0)
+    setPlaying(false)
     setNotice(message)
   }
   const swapIntoSlot = (productId: string, slotId: string) => {
@@ -127,15 +141,18 @@ export function App() {
     setLayoutHistory((history) => history.slice(0, -1))
     setPlayerLayout(previous)
     sessionStorage.setItem('nexai-player-layout', JSON.stringify(previous))
+    setActiveScenario('player')
+    setEventIndex(0)
+    setPlaying(false)
     setNotice('Restored the previous valid layout.')
   }
-  const resetLayout = () => { if (originalLayout) { setLayoutHistory([]); setPlayerLayout(originalLayout); sessionStorage.removeItem('nexai-player-layout'); setNotice('Reset player layout to the documented original arrangement.') } }
-  const automaticLayout = () => { if (dataset) applyLayout(createFastMoverLayout(dataset.products), 'Applied the frequency-aware fast-mover baseline to your player layout.') }
+  const resetLayout = () => { if (originalLayout) { setLayoutHistory([]); setPlayerLayout(originalLayout); sessionStorage.removeItem('nexai-player-layout'); setActiveScenario('player'); setEventIndex(0); setPlaying(false); setNotice('Reset player layout to the documented original arrangement.') } }
+  const applyAutomaticToPlayer = () => { if (dataset) applyLayout(createFastMoverLayout(dataset.products), 'Applied the frequency-aware fast-mover baseline to your player layout.') }
 
   return <main className="app-shell">
     <header className="topbar">
       <a className="brand" href="#top" aria-label="NEXAI warehouse digital twin home"><span className="brand-mark">N</span><span>NEXAI<small>WAREHOUSE DIGITAL TWIN</small></span></a>
-      <nav aria-label="Application sections">{navItems.map((item) => <button aria-current={mode === item.id ? 'page' : undefined} className={mode === item.id ? 'active' : ''} key={item.id} onClick={() => { setPlaying(false); setMode(item.id) }}><small>{item.index}</small>{item.label}</button>)}</nav>
+      <nav aria-label="Application sections">{navItems.map((item) => <button aria-current={mode === item.id ? 'page' : undefined} className={mode === item.id ? 'active' : ''} key={item.id} onClick={() => { setPlaying(false); if (item.id === 'layout') setActiveScenario('player'); setMode(item.id) }}><small>{item.index}</small>{item.label}</button>)}</nav>
       <div className="system-status"><span className={dataset ? 'status-dot loaded' : 'status-dot'} />DATA PIPELINE <b>{dataset ? 'VALIDATED' : 'LOADING'}</b></div>
     </header>
 
@@ -146,7 +163,7 @@ export function App() {
     </section>
 
     {mode === 'twin' && <section className="kpi-strip" aria-label="Live simulation metrics">
-      <Kpi label="TOTAL ORDERS" value={simulation ? simulation.result.metrics.completedOrders.toLocaleString() : '—'} detail="Validated order stream" />
+      <Kpi label="TOTAL ORDERS" value={simulation ? simulation.result.metrics.completedOrders.toLocaleString() : '—'} detail={`${scenarioName(activeScenario)} scenario`} />
       <Kpi label="ITEMS PICKED" value={simulation ? simulation.result.metrics.totalItemPicks.toLocaleString() : '—'} detail={simulation ? `${simulation.result.metrics.totalUnitsHandled.toLocaleString()} units handled` : 'Loading dataset'} />
       <Kpi label="TRAVEL DISTANCE" value={simulation ? `${(simulation.result.metrics.totalWalkingDistanceMeters / 1000).toFixed(2)} km` : '—'} detail="Aisle-aware routed walk" />
       <Kpi label="EST. PICKING TIME" value={simulation ? formatMinutes(simulation.result.metrics.totalEstimatedSeconds) : '—'} detail="Travel plus handling" />
@@ -155,11 +172,11 @@ export function App() {
     </section>}
 
     {mode === 'analytics' && comparison ? <AnalyticsView comparison={comparison} /> : <div className={mode === 'layout' ? 'main-grid layout-mode' : 'main-grid'}>
-      {mode === 'layout' && dataset && playerLayout ? <LayoutLab products={dataset.products} layout={playerLayout} selectedProductId={selectedProductId} onSelectProduct={setSelectedProductId} onSwap={swapIntoSlot} onUndo={undoLayout} onReset={resetLayout} onAutomatic={automaticLayout} canUndo={layoutHistory.length > 0} /> : <aside className="panel left-panel">
-        <div className="rail-nav" aria-label="Dashboard navigation"><button className={mode === 'twin' ? 'active' : ''} onClick={() => setMode('twin')}><b>▣</b> Dashboard</button><button onClick={() => setMode('twin')}><b>◇</b> 3D Warehouse</button><button onClick={() => setMode('layout')}><b>▦</b> Product Slotting</button><button onClick={() => setMode('analytics')}><b>▥</b> Analytics</button></div>
+      {mode === 'layout' && dataset && playerLayout ? <LayoutLab products={dataset.products} layout={playerLayout} selectedProductId={selectedProductId} onSelectProduct={setSelectedProductId} onSwap={swapIntoSlot} onUndo={undoLayout} onReset={resetLayout} onAutomatic={applyAutomaticToPlayer} canUndo={layoutHistory.length > 0} /> : <aside className="panel left-panel">
+        <div className="rail-nav" aria-label="Dashboard navigation"><button className={mode === 'twin' ? 'active' : ''} onClick={() => setMode('twin')}><b>▣</b> Dashboard</button><button onClick={() => setMode('twin')}><b>◇</b> 3D Warehouse</button><button onClick={() => { setActiveScenario('player'); setMode('layout') }}><b>▦</b> Product Slotting</button><button onClick={() => setMode('analytics')}><b>▥</b> Analytics</button></div>
         <div className="side-divider" />
         <div className="panel-title"><span>01</span><h2>Control surface</h2></div>
-        <div className="control-group"><label>ACTIVE LAYOUT</label><button className="select-control" onClick={() => setNotice('Original layout is the currently scored, neutral lexical-SKU starting layout.')}>Original layout <span>✓</span></button></div>
+        <div className="control-group"><label htmlFor="layout-scenario">ACTIVE LAYOUT</label><select className="select-control" id="layout-scenario" value={activeScenario} onChange={(event) => selectScenario(event.target.value as Scenario)}><option value="original">Original layout</option><option value="automatic">Automatic baseline</option><option value="player">Player layout</option></select></div>
         <div className="control-group"><label>PRODUCT LOOKUP</label><input aria-label="Loaded product count" placeholder={`${productCount} validated SKUs loaded`} disabled /></div>
         <div className="section-rule" />
         <div className="layers-row"><div><label>WAREHOUSE LAYERS</label><small>Route and product bins</small></div><button className={showLayers ? 'toggle on' : 'toggle'} aria-label="Toggle warehouse layers" onClick={() => setShowLayers(!showLayers)}><span /></button></div>
@@ -169,8 +186,8 @@ export function App() {
       }
 
       <section className="viewport-panel" aria-label="Interactive digital twin viewport">
-        {simulation && dataset && webglAvailable ? <ErrorBoundary fallback={<div className="fallback-view"><span className="eyebrow">3D VIEW RECOVERY</span><strong>The 3D renderer stopped. Use the Layout Lab and Analytics views, then refresh to retry WebGL.</strong></div>}><Suspense fallback={<div className="fallback-view"><span className="eyebrow">INITIALIZING TWIN</span><strong>Loading the real warehouse layout…</strong></div>}><DigitalTwin products={dataset.products} layout={simulation.layout} activeEvent={showLayers ? activeEvent : undefined} playing={playing} onSelectProduct={setSelectedProductId} selectedProductId={selectedProductId ?? activeEvent?.productId} /></Suspense></ErrorBoundary> : <div className="fallback-view"><span className="eyebrow">{dataError ?? (webglAvailable ? 'INITIALIZING TWIN' : 'WEBGL UNAVAILABLE')}</span><strong>{dataError ? 'Check the processed JSON asset, then retry the data request.' : webglAvailable ? 'Loading the real warehouse layout…' : 'Use the operational panels and data report; the 3D scene requires WebGL.'}</strong>{dataError && <button className="retry-button" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>Retry data load</button>}</div>}
-        <div className="viewport-tools"><button onClick={() => setNotice('Use drag to orbit, right-drag to pan, and the wheel to zoom.')}>⌖ Camera help</button><button onClick={() => setSelectedProductId(undefined)}>× Clear selection</button></div>
+        {simulation && dataset && webglAvailable ? <ErrorBoundary fallback={<div className="fallback-view"><span className="eyebrow">3D VIEW RECOVERY</span><strong>The 3D renderer stopped. Use the Layout Lab and Analytics views, then refresh to retry WebGL.</strong></div>}><Suspense fallback={<div className="fallback-view"><span className="eyebrow">INITIALIZING TWIN</span><strong>Loading the real warehouse layout…</strong></div>}><DigitalTwin key={cameraSeed} products={dataset.products} layout={simulation.layout} activeEvent={showLayers ? activeEvent : undefined} playing={playing} playbackSpeed={speed} onSelectProduct={setSelectedProductId} selectedProductId={selectedProductId ?? activeEvent?.productId} /></Suspense></ErrorBoundary> : <div className="fallback-view"><span className="eyebrow">{dataError ?? (webglAvailable ? 'INITIALIZING TWIN' : 'WEBGL UNAVAILABLE')}</span><strong>{dataError ? 'Check the processed JSON asset, then retry the data request.' : webglAvailable ? 'Loading the real warehouse layout…' : 'Use the operational panels and data report; the 3D scene requires WebGL.'}</strong>{dataError && <button className="retry-button" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>Retry data load</button>}</div>}
+        <div className="viewport-tools"><button onClick={() => { setCameraSeed((seed) => seed + 1); setNotice('Camera reset to the warehouse overview.') }}>⌖ Reset view</button><button onClick={() => setSelectedProductId(undefined)}>× Clear selection</button></div>
         <div className="legend"><span><i className="cyan" />Scored route</span><span><i className="magenta" />Target / picker</span><span><i className="lime" />Product bin</span></div>
       </section>
 
@@ -178,7 +195,7 @@ export function App() {
         <div className="panel-title"><span>02</span><h2>Live telemetry</h2><i className="pulse" /></div>
         <div className="picker-card"><div className="avatar">PK</div><div><span>Picker / 01</span><strong>{playing ? 'Walking route' : activeEvent ? 'Awaiting replay' : 'Standing by'}</strong><small>Order route from simulation engine</small></div></div>
         <div className="readout"><span>ACTIVE ORDER</span><strong>{activeOrder?.id ?? '—'}</strong><small>{activeEvents.length ? `Pick ${eventIndex + 1} of ${activeEvents.length}` : 'Loading event stream'}</small></div>
-        <div className="telemetry-list"><div><span>TARGET SKU</span><b>{selectedProduct?.code ?? '—'}</b></div><div><span>ROUTE LENGTH</span><b>{activeEvent ? formatMeters(activeEvent.travelDistanceMeters) : '—'} <small>m</small></b></div><div><span>HANDLING TIME</span><b>{activeEvent?.handlingSeconds ?? '—'} <small>s</small></b></div></div>
+        <div className="telemetry-list"><div><span>ACTIVE LAYOUT</span><b>{activeScenario === 'automatic' ? 'AUTO' : activeScenario.toUpperCase()}</b></div><div><span>TARGET SKU</span><b>{selectedProduct?.code ?? '—'}</b></div><div><span>ROUTE LENGTH</span><b>{activeEvent ? formatMeters(activeEvent.travelDistanceMeters) : '—'} <small>m</small></b></div><div><span>HANDLING TIME</span><b>{activeEvent?.handlingSeconds ?? '—'} <small>s</small></b></div></div>
         <div className="assumption"><span>SCORING ASSUMPTIONS</span><p>1.2 m/s walking; 5 s per line plus 1 s per unit. Travel and handling are separate.</p></div>
       </aside>
     </div>}
