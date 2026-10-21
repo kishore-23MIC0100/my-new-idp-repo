@@ -25,6 +25,10 @@ function Metric({ label, value, suffix = '' }: { label: string; value: string; s
   return <div className="metric"><span>{label}</span><strong>{value}<small>{suffix}</small></strong><em>Calculated from selected layout</em></div>
 }
 
+function Kpi({ label, value, detail, tone = 'cyan' }: { label: string; value: string; detail: string; tone?: 'cyan' | 'lime' }) {
+  return <article className={`kpi-card ${tone}`}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>
+}
+
 function formatMeters(value: number) { return Math.round(value).toLocaleString() }
 function formatMinutes(value: number) { return (value / 60).toFixed(1) }
 
@@ -141,8 +145,19 @@ export function App() {
       <button className="primary-action" disabled={!simulation} onClick={() => { if (mode === 'analytics') setMode('twin'); togglePlayback() }}><span>{playing ? 'Ⅱ' : '▶'}</span>{playing ? ' Pause replay' : ' Replay order'}</button>
     </section>
 
+    {mode === 'twin' && <section className="kpi-strip" aria-label="Live simulation metrics">
+      <Kpi label="TOTAL ORDERS" value={simulation ? simulation.result.metrics.completedOrders.toLocaleString() : '—'} detail="Validated order stream" />
+      <Kpi label="ITEMS PICKED" value={simulation ? simulation.result.metrics.totalItemPicks.toLocaleString() : '—'} detail={simulation ? `${simulation.result.metrics.totalUnitsHandled.toLocaleString()} units handled` : 'Loading dataset'} />
+      <Kpi label="TRAVEL DISTANCE" value={simulation ? `${(simulation.result.metrics.totalWalkingDistanceMeters / 1000).toFixed(2)} km` : '—'} detail="Aisle-aware routed walk" />
+      <Kpi label="EST. PICKING TIME" value={simulation ? formatMinutes(simulation.result.metrics.totalEstimatedSeconds) : '—'} detail="Travel plus handling" />
+      <Kpi label="AVG. DISTANCE / ORDER" value={simulation ? `${formatMeters(simulation.result.metrics.averageWalkingDistanceMeters)} m` : '—'} detail="Same order sequence" />
+      <Kpi label="AUTO DISTANCE CHANGE" value={comparison ? `${comparison.automaticDistanceReductionPercent?.toFixed(1) ?? 'n.a.'}%` : '—'} detail="Fast-mover baseline vs. original" tone="lime" />
+    </section>}
+
     {mode === 'analytics' && comparison ? <AnalyticsView comparison={comparison} /> : <div className={mode === 'layout' ? 'main-grid layout-mode' : 'main-grid'}>
       {mode === 'layout' && dataset && playerLayout ? <LayoutLab products={dataset.products} layout={playerLayout} selectedProductId={selectedProductId} onSelectProduct={setSelectedProductId} onSwap={swapIntoSlot} onUndo={undoLayout} onReset={resetLayout} onAutomatic={automaticLayout} canUndo={layoutHistory.length > 0} /> : <aside className="panel left-panel">
+        <div className="rail-nav" aria-label="Dashboard navigation"><button className={mode === 'twin' ? 'active' : ''} onClick={() => setMode('twin')}><b>▣</b> Dashboard</button><button onClick={() => setMode('twin')}><b>◇</b> 3D Warehouse</button><button onClick={() => setMode('layout')}><b>▦</b> Product Slotting</button><button onClick={() => setMode('analytics')}><b>▥</b> Analytics</button></div>
+        <div className="side-divider" />
         <div className="panel-title"><span>01</span><h2>Control surface</h2></div>
         <div className="control-group"><label>ACTIVE LAYOUT</label><button className="select-control" onClick={() => setNotice('Original layout is the currently scored, neutral lexical-SKU starting layout.')}>Original layout <span>✓</span></button></div>
         <div className="control-group"><label>PRODUCT LOOKUP</label><input aria-label="Loaded product count" placeholder={`${productCount} validated SKUs loaded`} disabled /></div>

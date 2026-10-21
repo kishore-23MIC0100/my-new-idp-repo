@@ -87,7 +87,7 @@ function WarehouseScene({ products, layout, activeEvent, playing, selectedProduc
 }
 
 export function DigitalTwin(props: DigitalTwinProps) {
-  return <Canvas shadows camera={{ position: [30, 30, 31], fov: 43 }} dpr={[1, 1.5]}>
+  return <Canvas shadows camera={{ position: [30, 42, 32], fov: 40 }} dpr={[1, 1.5]}>
     <WarehouseScene {...props} />
   </Canvas>
 }

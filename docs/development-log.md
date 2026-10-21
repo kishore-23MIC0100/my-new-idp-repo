@@ -189,3 +189,25 @@ Polish responsive behavior, add error-recovery safeguards, complete README guida
 
 - Deploy the committed repository to Vercel and test the live URL.
 - Add project team, demo video, and competition submission links when supplied.
+
+## Phase 10b — Reference-aligned dashboard visual redesign
+
+**Status:** Verified.
+
+### Design direction
+
+- Applied the supplied dashboard screenshot as a visual composition reference: dense navy command surfaces, compact top bar, KPI strip, persistent utility rail, and high-angle 3D warehouse focus.
+- Retained the existing implementation's source-backed data and simulation values. The UI does not use the reference image's example values.
+
+### Delivered
+
+- Added six live KPI cards using actual order, pick, walking, time, average-distance, and automatic-baseline metrics.
+- Added a blue operational side rail with direct dashboard, warehouse, slotting, and analytics navigation.
+- Increased the 3D view's overhead angle and tightened the overall cockpit density, borders, and blue telemetry palette.
+- Preserved responsive layouts for tablet and mobile viewports.
+
+### Verification
+
+- `npm run check` — passed.
+- `npm run build` — passed.
+- `npm run test` — passed.
