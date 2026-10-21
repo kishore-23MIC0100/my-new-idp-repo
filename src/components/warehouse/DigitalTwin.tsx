@@ -25,8 +25,8 @@ function Rack({ x, yStart, yEnd, id }: { x: number; yStart: number; yEnd: number
   const length = (yEnd - yStart + 1) * CELL_SIZE_METERS
   const [worldX, , worldZ] = toWorld({ x: x + 0.5, y: yStart + (yEnd - yStart) / 2 })
   return <group position={[worldX, 2.15, worldZ]}>
-    {[-1.38, 1.38].flatMap((beamX) => [-length / 2 + 0.2, length / 2 - 0.2].map((beamZ) => <mesh key={`${beamX}-${beamZ}`} position={[beamX, 0, beamZ]} castShadow><boxGeometry args={[0.16, 4.5, 0.16]} /><meshStandardMaterial color="#17649a" metalness={0.72} roughness={0.25} /></mesh>))}
-    {[-1.55, -0.2, 1.15].map((height) => <group key={height}><mesh position={[0, height, 0]}><boxGeometry args={[2.92, 0.13, length]} /><meshStandardMaterial color="#227cb7" metalness={0.7} roughness={0.26} /></mesh>{Array.from({ length: 10 }, (_, index) => <mesh key={index} position={[index % 2 ? -0.6 : 0.6, height + 0.31, -length / 2 + 0.85 + Math.floor(index / 2) * 2.7]} castShadow><boxGeometry args={[0.86, 0.5, 1.36]} /><meshStandardMaterial color={(index + Math.round(height * 2)) % 4 === 0 ? '#e27a4e' : '#c99354'} roughness={0.68} /></mesh>)}</group>)}
+    {[-1.38, 1.38].flatMap((beamX) => [-length / 2 + 0.2, length / 2 - 0.2].map((beamZ) => <mesh key={`${beamX}-${beamZ}`} position={[beamX, 0, beamZ]} castShadow><boxGeometry args={[0.16, 4.5, 0.16]} /><meshStandardMaterial color="#17649a" emissive="#06315f" emissiveIntensity={0.45} metalness={0.72} roughness={0.25} /></mesh>))}
+    {[-1.55, -0.2, 1.15].map((height) => <group key={height}><mesh position={[0, height, 0]}><boxGeometry args={[2.92, 0.13, length]} /><meshStandardMaterial color="#227cb7" emissive="#07558e" emissiveIntensity={0.36} metalness={0.7} roughness={0.26} /></mesh>{Array.from({ length: 10 }, (_, index) => <mesh key={index} position={[index % 2 ? -0.6 : 0.6, height + 0.31, -length / 2 + 0.85 + Math.floor(index / 2) * 2.7]} castShadow><boxGeometry args={[0.86, 0.5, 1.36]} /><meshStandardMaterial color={(index + Math.round(height * 2)) % 4 === 0 ? '#f18c51' : '#d9a05a'} emissive="#4a2106" emissiveIntensity={0.22} roughness={0.6} /></mesh>)}</group>)}
     <Text position={[0, 2.38, -length / 2 - 0.55]} color="#d6efff" fontSize={0.42} anchorX="center">{id.replace('R', 'A')}</Text>
   </group>
 }
@@ -91,9 +91,9 @@ function WarehouseScene({ products, layout, activeEvent, playing, playbackSpeed,
   return <>
     <color attach="background" args={['#07162d']} />
     <fog attach="fog" args={['#07162d', 42, 94]} />
-    <ambientLight intensity={1.35} />
+    <ambientLight intensity={2.1} />
     <hemisphereLight color="#90d8ff" groundColor="#0b1630" intensity={1.45} />
-    <directionalLight position={[18, 34, 14]} intensity={3.1} castShadow shadow-mapSize={[2048, 2048]} />
+    <directionalLight position={[18, 34, 14]} intensity={4.4} castShadow shadow-mapSize={[2048, 2048]} />
     <pointLight position={[dockX, 8, dockZ]} color="#20dfff" intensity={10} distance={28} />
     <pointLight position={[10, 10, 4]} color="#2c8fff" intensity={7} distance={24} />
     <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[WAREHOUSE_SIZE.width * CELL_SIZE_METERS, WAREHOUSE_SIZE.height * CELL_SIZE_METERS]} /><meshStandardMaterial color="#1a2940" roughness={0.68} metalness={0.28} /></mesh>
@@ -111,7 +111,7 @@ function WarehouseScene({ products, layout, activeEvent, playing, playbackSpeed,
 }
 
 export function DigitalTwin(props: DigitalTwinProps) {
-  return <Canvas shadows camera={{ position: [32, 45, 35], fov: 39 }} dpr={[1, 1.5]} gl={{ toneMappingExposure: 1.45 }}>
+  return <Canvas shadows camera={{ position: [26, 34, 27], fov: 38 }} dpr={[1, 1.5]} gl={{ toneMappingExposure: 1.7 }}>
     <WarehouseScene {...props} />
   </Canvas>
 }

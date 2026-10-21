@@ -3,7 +3,7 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { LayoutLab } from '../components/layout/LayoutLab'
 import { AnalyticsView } from '../components/analytics/AnalyticsView'
 import { swapProductIntoSlot } from '../engine/layout'
-import { createOriginalLayout, validateLayout } from '../engine/warehouse'
+import { createOriginalLayout, getSlot, validateLayout } from '../engine/warehouse'
 import { compareLayouts, createFastMoverLayout, type Product, type WarehouseOrder } from '../engine/simulation'
 
 type Mode = 'twin' | 'layout' | 'analytics'
@@ -90,6 +90,9 @@ export function App() {
   const activeEvents = useMemo(() => simulation && activeOrder ? simulation.result.events.filter((event) => event.orderId === activeOrder.id) : [], [simulation, activeOrder])
   const activeEvent = activeEvents[eventIndex]
   const selectedProduct = dataset?.products.find((product) => product.id === (selectedProductId ?? activeEvent?.productId))
+  const selectedSlot = simulation && selectedProduct ? getSlot(simulation.layout[selectedProduct.id]) : undefined
+  const completedPicks = playing ? eventIndex : 0
+  const orderProgress = activeEvents.length ? Math.round((completedPicks / activeEvents.length) * 100) : 0
 
   useEffect(() => {
     if (!playing || !activeEvents.length) return
@@ -183,7 +186,7 @@ export function App() {
         <div className="simulation-buttons"><button className="run" disabled={!activeEvents.length} onClick={togglePlayback}>{playing ? 'Ⅱ Pause' : '▶ Start'}</button><button disabled={!activeEvents.length} onClick={() => { setPlaying(false); setEventIndex(0); setOrderIndex(0); setNotice('Replay returned to the first scored pick.') }}>↶ Reset</button></div>
         <div className="speed-control"><label>PLAYBACK SPEED <b>{speed}×</b></label><button onClick={cycleSpeed}>Adjust speed</button></div>
         <div className="layers-row"><div><label>WAREHOUSE LAYERS</label><small>Route and product bins</small></div><button className={showLayers ? 'toggle on' : 'toggle'} aria-label="Toggle warehouse layers" onClick={() => setShowLayers(!showLayers)}><span /></button></div>
-        <ul className={showLayers ? 'layer-list' : 'layer-list hidden'}><li><i className="cyan" /> Scored route <b>LIVE</b></li><li><i className="magenta" /> Picker target <b>LIVE</b></li><li><i className="lime" /> Product slots <b>{productCount}</b></li></ul>
+        <div className="layer-buttons"><button className={showLayers ? 'active' : ''} onClick={() => setShowLayers(true)}>All</button><button onClick={() => setNotice('Layer 1 bins are the lowest accessible storage level.')}>L1</button><button onClick={() => setNotice('Layer 2 bins remain visible in the full warehouse view.')}>L2</button><button onClick={() => setNotice('Layer 3 bins remain visible in the full warehouse view.')}>L3</button></div>
         <div className="foundation-note"><span>ROUTING SOURCE</span><p>Every cyan segment is the same aisle-aware A* route used in scoring.</p></div>
       </aside>
       }
@@ -195,11 +198,11 @@ export function App() {
       </section>
 
       <aside className="panel telemetry-panel">
-        <div className="panel-title"><span>02</span><h2>Live telemetry</h2><i className="pulse" /></div>
-        <div className="picker-card"><div className="avatar">PK</div><div><span>Picker / 01</span><strong>{playing ? 'Walking route' : activeEvent ? 'Awaiting replay' : 'Standing by'}</strong><small>Order route from simulation engine</small></div></div>
-        <div className="readout"><span>ACTIVE ORDER</span><strong>{activeOrder?.id ?? '—'}</strong><small>{activeEvents.length ? `Pick ${eventIndex + 1} of ${activeEvents.length}` : 'Loading event stream'}</small></div>
-        <div className="telemetry-list"><div><span>ACTIVE LAYOUT</span><b>{activeScenario === 'automatic' ? 'AUTO' : activeScenario.toUpperCase()}</b></div><div><span>TARGET SKU</span><b>{selectedProduct?.code ?? '—'}</b></div><div><span>ROUTE LENGTH</span><b>{activeEvent ? formatMeters(activeEvent.travelDistanceMeters) : '—'} <small>m</small></b></div><div><span>HANDLING TIME</span><b>{activeEvent?.handlingSeconds ?? '—'} <small>s</small></b></div></div>
-        <div className="assumption"><span>SCORING ASSUMPTIONS</span><p>1.2 m/s walking; 5 s per line plus 1 s per unit. Travel and handling are separate.</p></div>
+        <div className="panel-title"><span>02</span><h2>Current Picker</h2><i className="pulse" /></div>
+        <div className="picker-card"><div className="avatar">PK</div><div><span>Picker #1</span><strong>{playing ? 'Picking route' : 'Ready to pick'}</strong><small>Order #{activeOrder?.id ?? 'Loading'}</small></div></div>
+        <div className="telemetry-list"><div><span>CURRENT LOCATION</span><b>{activeEvent?.slotId ?? 'Dock'}</b></div><div><span>NEXT PRODUCT</span><b>{selectedProduct?.code ?? '—'}</b></div><div><span>REMAINING DISTANCE</span><b>{activeEvent ? formatMeters(activeEvent.travelDistanceMeters) : '—'} <small>m</small></b></div></div>
+        <div className="product-card"><span>Selected Product</span><div className="product-box">▣</div><div><b>{selectedProduct?.code ?? 'Choose a bin'}</b><small>{selectedProduct?.description ?? 'Select a product in the warehouse'}</small><em>{selectedSlot ? `${selectedSlot.rackId} · L${selectedSlot.level}` : 'No location selected'}</em></div></div>
+        <div className="order-progress"><span>Active Order Progress</span><b>{completedPicks} / {activeEvents.length} picks <em>{orderProgress}%</em></b><i><u style={{ width: `${orderProgress}%` }} /></i>{activeEvents.slice(0, 3).map((event, index) => <small key={event.productId} className={index < completedPicks ? 'done' : index === completedPicks ? 'current' : ''}>{index + 1}. {dataset?.products.find((product) => product.id === event.productId)?.code ?? event.productId}</small>)}</div>
       </aside>
     </div>}
 
