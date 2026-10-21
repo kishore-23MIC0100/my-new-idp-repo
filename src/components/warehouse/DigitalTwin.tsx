@@ -12,6 +12,7 @@ type DigitalTwinProps = {
   playing: boolean
   playbackSpeed: number
   visibleLayer: 'all' | 1 | 2 | 3
+  photorealPlate?: boolean
   onSelectProduct: (productId: string) => void
   selectedProductId?: string
 }
@@ -83,7 +84,7 @@ function Picker({ activeEvent: event, playing, playbackSpeed }: Pick<DigitalTwin
   </group>
 }
 
-function WarehouseScene({ products, layout, activeEvent, playing, playbackSpeed, visibleLayer, selectedProductId, onSelectProduct }: DigitalTwinProps) {
+function WarehouseScene({ products, layout, activeEvent, playing, playbackSpeed, visibleLayer, photorealPlate, selectedProductId, onSelectProduct }: DigitalTwinProps) {
   const routePoints = useMemo(() => activeEvent?.route.map((point) => {
     const [x, y, z] = toWorld(point)
     return [x, y + 0.13, z] as [number, number, number]
@@ -94,20 +95,12 @@ function WarehouseScene({ products, layout, activeEvent, playing, playbackSpeed,
     return slot ? [[slot.rackId.split('-')[0], product.id]] : []
   })), [layout, products])
   return <>
-    <color attach="background" args={['#07162d']} />
-    <fog attach="fog" args={['#07162d', 42, 94]} />
-    <ambientLight intensity={2.1} />
+    {!photorealPlate && <><color attach="background" args={['#07162d']} /><fog attach="fog" args={['#07162d', 42, 94]} /></>}
+    <ambientLight intensity={photorealPlate ? 3 : 2.1} />
     <hemisphereLight color="#90d8ff" groundColor="#0b1630" intensity={1.45} />
     <directionalLight position={[18, 34, 14]} intensity={4.4} castShadow shadow-mapSize={[2048, 2048]} />
     <pointLight position={[dockX, 8, dockZ]} color="#20dfff" intensity={10} distance={28} />
-    <pointLight position={[10, 10, 4]} color="#2c8fff" intensity={7} distance={24} />
-    <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[WAREHOUSE_SIZE.width * CELL_SIZE_METERS, WAREHOUSE_SIZE.height * CELL_SIZE_METERS]} /><meshStandardMaterial color="#1a2940" roughness={0.68} metalness={0.28} /></mesh>
-    <Grid args={[WAREHOUSE_SIZE.width * CELL_SIZE_METERS, WAREHOUSE_SIZE.height * CELL_SIZE_METERS]} cellSize={CELL_SIZE_METERS} cellThickness={0.75} cellColor="#446a85" sectionSize={CELL_SIZE_METERS * 5} sectionColor="#e6c44c" fadeDistance={90} fadeStrength={0.45} position={[0, 0.01, 0]} />
-    {RACK_BLOCKS.map((rack) => <Rack key={rack.id} {...rack} visibleLayer={visibleLayer} onSelect={rackProducts[rack.id] ? () => onSelectProduct(rackProducts[rack.id]) : undefined} />)}
-    {[0, 1, 2].map((index) => <Truck key={index} position={[dockX - 5.2, 0.85, dockZ - 8 + index * 5.2]} />)}
-    <Forklift position={[4, 0.45, 4]} /><Forklift position={[11, 0.45, -6]} />
-    <group position={[dockX, 0.15, dockZ]}><mesh><boxGeometry args={[4.2, 0.25, 4.2]} /><meshStandardMaterial color="#07576a" emissive="#0087a4" emissiveIntensity={1.2} /></mesh><Text position={[0, 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]} color="#e5fdff" fontSize={0.42}>DOCK / DISPATCH</Text></group>
-    <group position={[20, 0.15, 10]}><mesh><boxGeometry args={[3.6, 0.25, 3.6]} /><meshStandardMaterial color="#0b7f55" emissive="#00a86b" emissiveIntensity={0.8} /></mesh><Text position={[0, 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]} color="#eafff5" fontSize={0.38}>PACKING</Text></group>
+    {!photorealPlate && <><pointLight position={[10, 10, 4]} color="#2c8fff" intensity={7} distance={24} /><mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[WAREHOUSE_SIZE.width * CELL_SIZE_METERS, WAREHOUSE_SIZE.height * CELL_SIZE_METERS]} /><meshStandardMaterial color="#1a2940" roughness={0.68} metalness={0.28} /></mesh><Grid args={[WAREHOUSE_SIZE.width * CELL_SIZE_METERS, WAREHOUSE_SIZE.height * CELL_SIZE_METERS]} cellSize={CELL_SIZE_METERS} cellThickness={0.75} cellColor="#446a85" sectionSize={CELL_SIZE_METERS * 5} sectionColor="#e6c44c" fadeDistance={90} fadeStrength={0.45} position={[0, 0.01, 0]} />{RACK_BLOCKS.map((rack) => <Rack key={rack.id} {...rack} visibleLayer={visibleLayer} onSelect={rackProducts[rack.id] ? () => onSelectProduct(rackProducts[rack.id]) : undefined} />)}{[0, 1, 2].map((index) => <Truck key={index} position={[dockX - 5.2, 0.85, dockZ - 8 + index * 5.2]} />)}<Forklift position={[4, 0.45, 4]} /><Forklift position={[11, 0.45, -6]} /><group position={[dockX, 0.15, dockZ]}><mesh><boxGeometry args={[4.2, 0.25, 4.2]} /><meshStandardMaterial color="#07576a" emissive="#0087a4" emissiveIntensity={1.2} /></mesh><Text position={[0, 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]} color="#e5fdff" fontSize={0.42}>DOCK / DISPATCH</Text></group><group position={[20, 0.15, 10]}><mesh><boxGeometry args={[3.6, 0.25, 3.6]} /><meshStandardMaterial color="#0b7f55" emissive="#00a86b" emissiveIntensity={0.8} /></mesh><Text position={[0, 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]} color="#eafff5" fontSize={0.38}>PACKING</Text></group></>}
     <ProductBins products={products} layout={layout} selectedProductId={selectedProductId} onSelectProduct={onSelectProduct} visibleLayer={visibleLayer} />
     {routePoints.length > 1 && <Line points={routePoints} color="#00e5ff" lineWidth={3.5} transparent opacity={0.9} />}
     <Picker activeEvent={activeEvent} playing={playing} playbackSpeed={playbackSpeed} />
@@ -116,7 +109,7 @@ function WarehouseScene({ products, layout, activeEvent, playing, playbackSpeed,
 }
 
 export function DigitalTwin(props: DigitalTwinProps) {
-  return <Canvas shadows camera={{ position: [26, 34, 27], fov: 38 }} dpr={[1, 1.5]} gl={{ toneMappingExposure: 1.7 }}>
+  return <Canvas shadows camera={{ position: [26, 34, 27], fov: 38 }} dpr={[1, 1.5]} gl={{ alpha: true, toneMappingExposure: 1.7 }}>
     <WarehouseScene {...props} />
   </Canvas>
 }
