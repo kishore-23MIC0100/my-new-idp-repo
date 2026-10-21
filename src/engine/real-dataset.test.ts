@@ -15,5 +15,6 @@ describe('real November 2011 dataset simulation', () => {
     expect(comparison.original.metrics.totalItemPicks).toBe(14043)
     expect(comparison.original.metrics.totalWalkingDistanceMeters).toBeGreaterThan(0)
     expect(comparison.automatic.metrics.totalWalkingDistanceMeters).toBeGreaterThan(0)
+    expect(Object.values(comparison.player.rackVisits).reduce((total, visits) => total + visits, 0)).toBe(comparison.player.metrics.totalItemPicks)
   }, 30_000)
 })

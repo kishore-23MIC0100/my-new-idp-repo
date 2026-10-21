@@ -1,8 +1,9 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { LayoutLab } from '../components/layout/LayoutLab'
+import { AnalyticsView } from '../components/analytics/AnalyticsView'
 import { swapProductIntoSlot } from '../engine/layout'
 import { createOriginalLayout } from '../engine/warehouse'
-import { createFastMoverLayout, simulateOrders, type Product, type WarehouseOrder } from '../engine/simulation'
+import { compareLayouts, createFastMoverLayout, simulateOrders, type Product, type WarehouseOrder } from '../engine/simulation'
 
 type Mode = 'twin' | 'layout' | 'analytics'
 type RetailProduct = Product & { code: string; description: string }
@@ -69,6 +70,7 @@ export function App() {
     const layout = playerLayout ?? createOriginalLayout([...productIds].sort())
     return { layout, result: simulateOrders(dataset.orders, productIds, layout) }
   }, [dataset, playerLayout])
+  const comparison = useMemo(() => dataset ? compareLayouts(dataset.products, dataset.orders, playerLayout) : null, [dataset, playerLayout])
   const activeOrder = dataset?.orders[0]
   const activeEvents = useMemo(() => simulation && activeOrder ? simulation.result.events.filter((event) => event.orderId === activeOrder.id) : [], [simulation, activeOrder])
   const activeEvent = activeEvents[eventIndex]
@@ -130,7 +132,7 @@ export function App() {
       <button className="primary-action" disabled={!simulation} onClick={togglePlayback}><span>{playing ? 'Ⅱ' : '▶'}</span>{playing ? ' Pause replay' : ' Replay order'}</button>
     </section>
 
-    <div className={mode === 'layout' ? 'main-grid layout-mode' : 'main-grid'}>
+    {mode === 'analytics' && comparison ? <AnalyticsView comparison={comparison} /> : <div className={mode === 'layout' ? 'main-grid layout-mode' : 'main-grid'}>
       {mode === 'layout' && dataset && playerLayout ? <LayoutLab products={dataset.products} layout={playerLayout} selectedProductId={selectedProductId} onSelectProduct={setSelectedProductId} onSwap={swapIntoSlot} onUndo={undoLayout} onReset={resetLayout} onAutomatic={automaticLayout} canUndo={layoutHistory.length > 0} /> : <aside className="panel left-panel">
         <div className="panel-title"><span>01</span><h2>Control surface</h2></div>
         <div className="control-group"><label>ACTIVE LAYOUT</label><button className="select-control" onClick={() => setNotice('Original layout is the currently scored, neutral lexical-SKU starting layout.')}>Original layout <span>✓</span></button></div>
@@ -155,12 +157,12 @@ export function App() {
         <div className="telemetry-list"><div><span>TARGET SKU</span><b>{selectedProduct?.code ?? '—'}</b></div><div><span>ROUTE LENGTH</span><b>{activeEvent ? formatMeters(activeEvent.travelDistanceMeters) : '—'} <small>m</small></b></div><div><span>HANDLING TIME</span><b>{activeEvent?.handlingSeconds ?? '—'} <small>s</small></b></div></div>
         <div className="assumption"><span>SCORING ASSUMPTIONS</span><p>1.2 m/s walking; 5 s per line plus 1 s per unit. Travel and handling are separate.</p></div>
       </aside>
-    </div>
+    </div>}
 
-    <section className="bottom-zone">
+    {mode !== 'analytics' && <section className="bottom-zone">
       <div className="playback"><div className="playback-head"><span>ORDER REPLAY</span><em>{activeEvents.length ? `${eventIndex + 1} / ${activeEvents.length} SCORING EVENTS` : 'LOADING'}</em></div><div className="playback-controls"><button aria-label="Previous pick" onClick={() => step(-1)}>↶</button><button className="play" aria-label="Play or pause replay" onClick={togglePlayback}>{playing ? 'Ⅱ' : '▶'}</button><button aria-label="Next pick" onClick={() => step(1)}>↷</button><div className="timeline"><i style={{ width: `${activeEvents.length ? ((eventIndex + 1) / activeEvents.length) * 100 : 0}%` }} /></div><button className="speed" onClick={cycleSpeed}>{speed}×</button></div></div>
       <div className="metrics"><Metric label="TOTAL WALK" value={simulation ? formatMeters(simulation.result.metrics.totalWalkingDistanceMeters) : '—'} suffix="m" /><Metric label="AVG. PICK TIME" value={simulation ? formatMinutes(simulation.result.metrics.averageEstimatedSeconds) : '—'} suffix="min/order" /><Metric label="ORDERS" value={simulation ? simulation.result.metrics.completedOrders.toLocaleString() : '—'} /></div>
-    </section>
+    </section>}
     <footer className="notice" role="status"><span>◆</span>{notice}<button onClick={() => setNotice('Click a product bin to inspect it. Orbit, pan, and zoom the warehouse with the pointer.')}>Help</button></footer>
   </main>
 }

@@ -144,3 +144,25 @@ Build the slotting editor and comparison analytics around the same validated lay
 ### Next phase
 
 Build the analytics view with original, automatic, and player comparison metrics plus a route-derived rack-visit heatmap.
+
+## Phase 8 — Analytics and explainability
+
+**Status:** Verified.
+
+### Delivered
+
+- Added a dedicated Analytics view with original, automatic-baseline, and current-player metrics calculated from the same real order stream.
+- Displays total/average walking distance, total/average estimated time, completed orders, picks, units handled, and explicit signed distance reduction.
+- Added a player-layout rack heatmap driven by `rackVisits` from actual scored pick events; it is not randomly generated.
+- Documents the frequency-aware baseline and clearly separates estimated travel plus handling time from real-world measurement.
+
+### Verification
+
+- `npm run check` — passed.
+- `npm run build` — passed.
+- `npm run test` — passed: 13 frontend tests and 3 Python tests.
+- Real-dataset test now verifies that summed rack visits equal the 14,043 simulated product picks.
+
+### Next phase
+
+Polish responsive behavior, add error-recovery safeguards, complete README guidance, and perform final end-to-end verification.
