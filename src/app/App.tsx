@@ -1,0 +1,134 @@
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { createOriginalLayout } from '../engine/warehouse'
+import { simulateOrders, type Product, type WarehouseOrder } from '../engine/simulation'
+
+type Mode = 'twin' | 'layout' | 'analytics'
+type RetailProduct = Product & { code: string; description: string }
+type RetailDataset = { metadata: { selectedPeriod: string }; products: RetailProduct[]; orders: WarehouseOrder[] }
+
+const DigitalTwin = lazy(async () => {
+  const module = await import('../components/warehouse/DigitalTwin')
+  return { default: module.DigitalTwin }
+})
+
+const navItems: { id: Mode; label: string; index: string }[] = [
+  { id: 'twin', label: 'Digital Twin', index: '01' },
+  { id: 'layout', label: 'Layout Lab', index: '02' },
+  { id: 'analytics', label: 'Analytics', index: '03' },
+]
+
+function Metric({ label, value, suffix = '' }: { label: string; value: string; suffix?: string }) {
+  return <div className="metric"><span>{label}</span><strong>{value}<small>{suffix}</small></strong><em>Calculated from selected layout</em></div>
+}
+
+function formatMeters(value: number) { return Math.round(value).toLocaleString() }
+function formatMinutes(value: number) { return (value / 60).toFixed(1) }
+
+export function App() {
+  const [mode, setMode] = useState<Mode>('twin')
+  const [showLayers, setShowLayers] = useState(true)
+  const [notice, setNotice] = useState('Loading validated UCI Online Retail II data…')
+  const [dataset, setDataset] = useState<RetailDataset | null>(null)
+  const [eventIndex, setEventIndex] = useState(0)
+  const [playing, setPlaying] = useState(false)
+  const [speed, setSpeed] = useState(1)
+  const [selectedProductId, setSelectedProductId] = useState<string>()
+  const [webglAvailable, setWebglAvailable] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    try {
+      const canvas = document.createElement('canvas')
+      setWebglAvailable(Boolean(canvas.getContext('webgl') || canvas.getContext('experimental-webgl')))
+    } catch { setWebglAvailable(false) }
+    fetch('/data/retail-2011-11.json')
+      .then((response) => {
+        if (!response.ok) throw new Error('Dataset request failed')
+        return response.json() as Promise<RetailDataset>
+      })
+      .then((loaded) => {
+        if (!active) return
+        setDataset(loaded)
+        setNotice(`Validated UCI Online Retail II data loaded: ${loaded.products.length} SKUs and ${loaded.orders.length.toLocaleString()} orders.`)
+      })
+      .catch(() => { if (active) setNotice('The processed dataset could not be loaded. Re-run the preprocessing script and refresh.') })
+    return () => { active = false }
+  }, [])
+
+  const simulation = useMemo(() => {
+    if (!dataset) return null
+    const productIds = dataset.products.map((product) => product.id)
+    const layout = createOriginalLayout([...productIds].sort())
+    return { layout, result: simulateOrders(dataset.orders, productIds, layout) }
+  }, [dataset])
+  const activeOrder = dataset?.orders[0]
+  const activeEvents = useMemo(() => simulation && activeOrder ? simulation.result.events.filter((event) => event.orderId === activeOrder.id) : [], [simulation, activeOrder])
+  const activeEvent = activeEvents[eventIndex]
+  const selectedProduct = dataset?.products.find((product) => product.id === (selectedProductId ?? activeEvent?.productId))
+
+  useEffect(() => {
+    if (!playing || !activeEvents.length) return
+    const timer = window.setInterval(() => setEventIndex((current) => {
+      const next = current + 1
+      if (next >= activeEvents.length) { setPlaying(false); return current }
+      return next
+    }), Math.max(600, 1800 / speed))
+    return () => window.clearInterval(timer)
+  }, [playing, speed, activeEvents.length])
+
+  const togglePlayback = () => {
+    if (!activeEvents.length) return
+    if (eventIndex >= activeEvents.length - 1) setEventIndex(0)
+    setPlaying((value) => !value)
+  }
+  const step = (direction: -1 | 1) => setEventIndex((current) => Math.min(Math.max(current + direction, 0), Math.max(activeEvents.length - 1, 0)))
+  const cycleSpeed = () => setSpeed((current) => current === 1 ? 2 : current === 2 ? 4 : 1)
+  const productCount = dataset?.products.length ?? 0
+  const orderCount = dataset?.orders.length ?? 0
+
+  return <main className="app-shell">
+    <header className="topbar">
+      <a className="brand" href="#top" aria-label="NEXAI warehouse digital twin home"><span className="brand-mark">N</span><span>NEXAI<small>WAREHOUSE DIGITAL TWIN</small></span></a>
+      <nav aria-label="Application sections">{navItems.map((item) => <button className={mode === item.id ? 'active' : ''} key={item.id} onClick={() => setMode(item.id)}><small>{item.index}</small>{item.label}</button>)}</nav>
+      <div className="system-status"><span className={dataset ? 'status-dot loaded' : 'status-dot'} />DATA PIPELINE <b>{dataset ? 'VALIDATED' : 'LOADING'}</b></div>
+    </header>
+
+    <section className="command-header" id="top">
+      <div><p className="eyebrow">PS 4.2 / TRACK 04 / COMMAND CENTER</p><h1>{mode === 'twin' ? 'Picking Floor / Digital Twin' : mode === 'layout' ? 'Slotting / Layout Lab' : 'Run / Analytics'}</h1></div>
+      <div className="dataset-strip"><span>DATASET</span><strong>UCI ONLINE RETAIL II</strong><small>{dataset ? `${dataset.metadata.selectedPeriod} · ${productCount} SKUs · ${orderCount.toLocaleString()} orders` : 'Validating processed data'}</small></div>
+      <button className="primary-action" disabled={!simulation} onClick={togglePlayback}><span>{playing ? 'Ⅱ' : '▶'}</span>{playing ? ' Pause replay' : ' Replay order'}</button>
+    </section>
+
+    <div className="main-grid">
+      <aside className="panel left-panel">
+        <div className="panel-title"><span>01</span><h2>Control surface</h2></div>
+        <div className="control-group"><label>ACTIVE LAYOUT</label><button className="select-control" onClick={() => setNotice('Original layout is the currently scored, neutral lexical-SKU starting layout.')}>Original layout <span>✓</span></button></div>
+        <div className="control-group"><label>PRODUCT LOOKUP</label><input aria-label="Loaded product count" placeholder={`${productCount} validated SKUs loaded`} disabled /></div>
+        <div className="section-rule" />
+        <div className="layers-row"><div><label>WAREHOUSE LAYERS</label><small>Route and product bins</small></div><button className={showLayers ? 'toggle on' : 'toggle'} aria-label="Toggle warehouse layers" onClick={() => setShowLayers(!showLayers)}><span /></button></div>
+        <ul className={showLayers ? 'layer-list' : 'layer-list hidden'}><li><i className="cyan" /> Scored route <b>LIVE</b></li><li><i className="magenta" /> Picker target <b>LIVE</b></li><li><i className="lime" /> Product slots <b>{productCount}</b></li></ul>
+        <div className="foundation-note"><span>ROUTING SOURCE</span><p>Every cyan segment is the same aisle-aware A* route used in scoring.</p></div>
+      </aside>
+
+      <section className="viewport-panel" aria-label="Interactive digital twin viewport">
+        {simulation && dataset && webglAvailable ? <Suspense fallback={<div className="fallback-view"><span className="eyebrow">INITIALIZING TWIN</span><strong>Loading the real warehouse layout…</strong></div>}><DigitalTwin products={dataset.products} layout={simulation.layout} activeEvent={showLayers ? activeEvent : undefined} playing={playing} onSelectProduct={setSelectedProductId} selectedProductId={selectedProductId ?? activeEvent?.productId} /></Suspense> : <div className="fallback-view"><span className="eyebrow">{webglAvailable ? 'INITIALIZING TWIN' : 'WEBGL UNAVAILABLE'}</span><strong>{webglAvailable ? 'Loading the real warehouse layout…' : 'Use the operational panels and data report; the 3D scene requires WebGL.'}</strong></div>}
+        <div className="viewport-tools"><button onClick={() => setNotice('Use drag to orbit, right-drag to pan, and the wheel to zoom.')}>⌖ Camera help</button><button onClick={() => setSelectedProductId(undefined)}>× Clear selection</button></div>
+        <div className="legend"><span><i className="cyan" />Scored route</span><span><i className="magenta" />Target / picker</span><span><i className="lime" />Product bin</span></div>
+      </section>
+
+      <aside className="panel telemetry-panel">
+        <div className="panel-title"><span>02</span><h2>Live telemetry</h2><i className="pulse" /></div>
+        <div className="picker-card"><div className="avatar">PK</div><div><span>Picker / 01</span><strong>{playing ? 'Walking route' : activeEvent ? 'Awaiting replay' : 'Standing by'}</strong><small>Order route from simulation engine</small></div></div>
+        <div className="readout"><span>ACTIVE ORDER</span><strong>{activeOrder?.id ?? '—'}</strong><small>{activeEvents.length ? `Pick ${eventIndex + 1} of ${activeEvents.length}` : 'Loading event stream'}</small></div>
+        <div className="telemetry-list"><div><span>TARGET SKU</span><b>{selectedProduct?.code ?? '—'}</b></div><div><span>ROUTE LENGTH</span><b>{activeEvent ? formatMeters(activeEvent.travelDistanceMeters) : '—'} <small>m</small></b></div><div><span>HANDLING TIME</span><b>{activeEvent?.handlingSeconds ?? '—'} <small>s</small></b></div></div>
+        <div className="assumption"><span>SCORING ASSUMPTIONS</span><p>1.2 m/s walking; 5 s per line plus 1 s per unit. Travel and handling are separate.</p></div>
+      </aside>
+    </div>
+
+    <section className="bottom-zone">
+      <div className="playback"><div className="playback-head"><span>ORDER REPLAY</span><em>{activeEvents.length ? `${eventIndex + 1} / ${activeEvents.length} SCORING EVENTS` : 'LOADING'}</em></div><div className="playback-controls"><button aria-label="Previous pick" onClick={() => step(-1)}>↶</button><button className="play" aria-label="Play or pause replay" onClick={togglePlayback}>{playing ? 'Ⅱ' : '▶'}</button><button aria-label="Next pick" onClick={() => step(1)}>↷</button><div className="timeline"><i style={{ width: `${activeEvents.length ? ((eventIndex + 1) / activeEvents.length) * 100 : 0}%` }} /></div><button className="speed" onClick={cycleSpeed}>{speed}×</button></div></div>
+      <div className="metrics"><Metric label="TOTAL WALK" value={simulation ? formatMeters(simulation.result.metrics.totalWalkingDistanceMeters) : '—'} suffix="m" /><Metric label="AVG. PICK TIME" value={simulation ? formatMinutes(simulation.result.metrics.averageEstimatedSeconds) : '—'} suffix="min/order" /><Metric label="ORDERS" value={simulation ? simulation.result.metrics.completedOrders.toLocaleString() : '—'} /></div>
+    </section>
+    <footer className="notice" role="status"><span>◆</span>{notice}<button onClick={() => setNotice('Click a product bin to inspect it. Orbit, pan, and zoom the warehouse with the pointer.')}>Help</button></footer>
+  </main>
+}
