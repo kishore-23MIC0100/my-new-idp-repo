@@ -8,6 +8,7 @@ import { compareLayouts, createFastMoverLayout, type Product, type WarehouseOrde
 
 type Mode = 'twin' | 'layout' | 'analytics'
 type Scenario = 'original' | 'automatic' | 'player'
+type WarehouseLayer = 'all' | 1 | 2 | 3
 type RetailProduct = Product & { code: string; description: string }
 type RetailDataset = { metadata: { selectedPeriod: string }; products: RetailProduct[]; orders: WarehouseOrder[] }
 
@@ -47,6 +48,7 @@ export function App() {
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [activeScenario, setActiveScenario] = useState<Scenario>('original')
   const [cameraSeed, setCameraSeed] = useState(0)
+  const [visibleLayer, setVisibleLayer] = useState<WarehouseLayer>('all')
 
   useEffect(() => {
     let active = true
@@ -188,14 +190,14 @@ export function App() {
         <div className="simulation-buttons"><button className="run" disabled={!activeEvents.length} onClick={togglePlayback}>{playing ? 'Ⅱ Pause' : '▶ Start'}</button><button disabled={!activeEvents.length} onClick={() => { setPlaying(false); setEventIndex(0); setOrderIndex(0); setNotice('Replay returned to the first scored pick.') }}>↶ Reset</button></div>
         <div className="speed-control"><label>PLAYBACK SPEED <b>{speed}×</b></label><button onClick={cycleSpeed}>Adjust speed</button></div>
         <div className="layers-row"><div><label>WAREHOUSE LAYERS</label><small>Route and product bins</small></div><button className={showLayers ? 'toggle on' : 'toggle'} aria-label="Toggle warehouse layers" onClick={() => setShowLayers(!showLayers)}><span /></button></div>
-        <div className="layer-buttons"><button className={showLayers ? 'active' : ''} onClick={() => setShowLayers(true)}>All</button><button onClick={() => setNotice('Layer 1 bins are the lowest accessible storage level.')}>L1</button><button onClick={() => setNotice('Layer 2 bins remain visible in the full warehouse view.')}>L2</button><button onClick={() => setNotice('Layer 3 bins remain visible in the full warehouse view.')}>L3</button></div>
+        <div className="layer-buttons"><button className={visibleLayer === 'all' ? 'active' : ''} onClick={() => { setVisibleLayer('all'); setShowLayers(true) }}>All</button>{([1, 2, 3] as const).map((layer) => <button key={layer} className={visibleLayer === layer ? 'active' : ''} onClick={() => { setVisibleLayer(layer); setShowLayers(true); setNotice(`Showing rack level ${layer} in the 3D warehouse.`) }}>L{layer}</button>)}</div>
         <div className="current-order-card"><span>Current Order</span><b>Order #{activeOrder?.id ?? 'Loading'}</b><small>{activeEvents.length} items · {activeEvents.reduce((sum, event) => sum + event.travelDistanceMeters, 0).toFixed(0)} m</small><i><u style={{ width: `${orderProgress}%` }} /></i><em>{completedPicks} / {activeEvents.length} picks</em></div>
         <div className="foundation-note"><span>ROUTING SOURCE</span><p>Every cyan segment is the same aisle-aware A* route used in scoring.</p></div>
       </aside>
       }
 
       <section className="viewport-panel" aria-label="Interactive digital twin viewport">
-        {simulation && dataset && webglAvailable ? <ErrorBoundary fallback={<div className="fallback-view"><span className="eyebrow">3D VIEW RECOVERY</span><strong>The 3D renderer stopped. Use the Layout Lab and Analytics views, then refresh to retry WebGL.</strong></div>}><Suspense fallback={<div className="fallback-view"><span className="eyebrow">INITIALIZING TWIN</span><strong>Loading the real warehouse layout…</strong></div>}><DigitalTwin key={cameraSeed} products={dataset.products} layout={simulation.layout} activeEvent={showLayers ? activeEvent : undefined} playing={playing} playbackSpeed={speed} onSelectProduct={setSelectedProductId} selectedProductId={selectedProductId ?? activeEvent?.productId} /></Suspense></ErrorBoundary> : <div className="fallback-view"><span className="eyebrow">{dataError ?? (webglAvailable ? 'INITIALIZING TWIN' : 'WEBGL UNAVAILABLE')}</span><strong>{dataError ? 'Check the processed JSON asset, then retry the data request.' : webglAvailable ? 'Loading the real warehouse layout…' : 'Use the operational panels and data report; the 3D scene requires WebGL.'}</strong>{dataError && <button className="retry-button" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>Retry data load</button>}</div>}
+        {simulation && dataset && webglAvailable ? <ErrorBoundary fallback={<div className="fallback-view"><span className="eyebrow">3D VIEW RECOVERY</span><strong>The 3D renderer stopped. Use the Layout Lab and Analytics views, then refresh to retry WebGL.</strong></div>}><Suspense fallback={<div className="fallback-view"><span className="eyebrow">INITIALIZING TWIN</span><strong>Loading the real warehouse layout…</strong></div>}><DigitalTwin key={cameraSeed} products={dataset.products} layout={simulation.layout} activeEvent={showLayers ? activeEvent : undefined} playing={playing} playbackSpeed={speed} visibleLayer={visibleLayer} onSelectProduct={setSelectedProductId} selectedProductId={selectedProductId ?? activeEvent?.productId} /></Suspense></ErrorBoundary> : <div className="fallback-view"><span className="eyebrow">{dataError ?? (webglAvailable ? 'INITIALIZING TWIN' : 'WEBGL UNAVAILABLE')}</span><strong>{dataError ? 'Check the processed JSON asset, then retry the data request.' : webglAvailable ? 'Loading the real warehouse layout…' : 'Use the operational panels and data report; the 3D scene requires WebGL.'}</strong>{dataError && <button className="retry-button" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>Retry data load</button>}</div>}
         <div className="viewport-tools"><button onClick={() => { setCameraSeed((seed) => seed + 1); setNotice('Camera reset to the warehouse overview.') }}>⌖ Reset view</button><button onClick={() => setSelectedProductId(undefined)}>× Clear selection</button><button onClick={() => { const element = document.querySelector('.viewport-panel'); if (element && document.fullscreenElement !== element) void element.requestFullscreen(); else void document.exitFullscreen() }}>⛶ Fullscreen</button></div>
         <div className="legend"><span><i className="cyan" />Scored route</span><span><i className="magenta" />Target / picker</span><span><i className="lime" />Product bin</span></div>
       </section>
