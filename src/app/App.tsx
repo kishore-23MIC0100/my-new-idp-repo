@@ -23,8 +23,8 @@ const navItems: { id: Mode; label: string; index: string }[] = [
   { id: 'analytics', label: 'Analytics', index: '03' },
 ]
 
-function Kpi({ label, value, detail, tone = 'cyan', glyph }: { label: string; value: string; detail: string; tone?: 'cyan' | 'lime'; glyph: string }) {
-  return <article className={`kpi-card ${tone}`}><i aria-hidden="true">{glyph}</i><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>
+function Kpi({ label, value, detail, tone = 'cyan', glyph, explanation }: { label: string; value: string; detail: string; tone?: 'cyan' | 'lime'; glyph: string; explanation: string }) {
+  return <article className={`kpi-card ${tone}`} title={explanation}><i aria-hidden="true">{glyph}</i><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>
 }
 
 function formatMeters(value: number) { return Math.round(value).toLocaleString() }
@@ -171,12 +171,12 @@ export function App() {
     </section>
 
     {mode === 'twin' && <section className="kpi-strip" aria-label="Live simulation metrics">
-      <Kpi glyph="▣" label="TOTAL ORDERS" value={simulation ? simulation.result.metrics.completedOrders.toLocaleString() : '—'} detail={`${scenarioName(activeScenario)} scenario`} />
-      <Kpi glyph="◇" label="ITEMS PICKED" value={simulation ? simulation.result.metrics.totalItemPicks.toLocaleString() : '—'} detail={simulation ? `${simulation.result.metrics.totalUnitsHandled.toLocaleString()} units handled` : 'Loading dataset'} />
-      <Kpi glyph="⌁" label="TRAVEL DISTANCE" value={simulation ? `${(simulation.result.metrics.totalWalkingDistanceMeters / 1000).toFixed(2)} km` : '—'} detail="Aisle-aware routed walk" />
-      <Kpi glyph="◷" label="PICKING TIME" value={simulation ? formatMinutes(simulation.result.metrics.totalEstimatedSeconds) : '—'} detail="Travel plus handling" />
-      <Kpi glyph="⌖" label="AVG. DISTANCE / ORDER" value={simulation ? `${formatMeters(simulation.result.metrics.averageWalkingDistanceMeters)} m` : '—'} detail="Same order sequence" />
-      <Kpi glyph="87" label="ROUTE EFFICIENCY" value={comparison ? `${comparison.automaticDistanceReductionPercent?.toFixed(1) ?? 'n.a.'}%` : '—'} detail="Fast-mover baseline vs. original" tone="lime" />
+      <Kpi glyph="▣" label="TOTAL ORDERS" value={simulation ? simulation.result.metrics.completedOrders.toLocaleString() : '—'} detail={`${scenarioName(activeScenario)} scenario`} explanation="Distinct validated orders in the selected Retail II workload." />
+      <Kpi glyph="◇" label="ITEMS PICKED" value={simulation ? simulation.result.metrics.totalItemPicks.toLocaleString() : '—'} detail={simulation ? `${simulation.result.metrics.totalUnitsHandled.toLocaleString()} units handled` : 'Loading dataset'} explanation="Unique SKU pick events from the scored order stream." />
+      <Kpi glyph="⌁" label="TRAVEL DISTANCE" value={simulation ? `${(simulation.result.metrics.totalWalkingDistanceMeters / 1000).toFixed(2)} km` : '—'} detail="Aisle-aware routed walk" explanation="Total A-star travel distance through walkable warehouse cells." />
+      <Kpi glyph="◷" label="PICKING TIME" value={simulation ? formatMinutes(simulation.result.metrics.totalEstimatedSeconds) : '—'} detail="Travel plus handling" explanation="Walking time at 1.2 metres per second plus line and unit handling time." />
+      <Kpi glyph="⌖" label="AVG. DISTANCE / ORDER" value={simulation ? `${formatMeters(simulation.result.metrics.averageWalkingDistanceMeters)} m` : '—'} detail="Same order sequence" explanation="Total simulated walking distance divided by completed orders." />
+      <Kpi glyph="↓" label="LAYOUT IMPROVEMENT" value={comparison ? `${comparison.automaticDistanceReductionPercent?.toFixed(1) ?? 'n.a.'}%` : '—'} detail="Automatic baseline vs. original" tone="lime" explanation="Distance reduction achieved by the frequency-aware automatic layout compared with the original layout." />
     </section>}
 
     {mode === 'analytics' && comparison && dataset ? <AnalyticsView comparison={comparison} products={dataset.products} /> : <div className={mode === 'layout' ? 'main-grid layout-mode' : 'main-grid'}>
