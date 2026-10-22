@@ -22,4 +22,4 @@ The initial layout maps products to valid slots in stable product order. Validat
 
 The live scene, return-to-dock timeline, product editor, per-order charts and comparison cards all consume this geometry. Grid endpoints must be finite integer cells. Four-direction shortest paths avoid the rack footprints. Decorative loading equipment does not alter the route graph; trucks sit outside its bounds.
 
-Current modelling limits: fixed geometry, no congestion, no vertical retrieval penalty, one picker. Changing the exported geometry constants requires restarting the app and regenerating the route cache. See `simulation-method.md` for scoring.
+Current modelling limits: fixed geometry, no congestion, one to four independent pickers, no continuous vertical motion or collision avoidance. Shelf retrieval time adds 0/6/12 seconds per pick at L1/L2/L3. Changing the exported geometry constants requires restarting the app and regenerating the route cache. See `simulation-method.md` for scoring.

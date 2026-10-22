@@ -8,7 +8,8 @@ An interactive browser-based warehouse slotting game built from a processed UCI 
 - Deterministic A* routes that respect rack obstacles and rack-face access points.
 - Fair original, automatic fast-mover, and player-layout scoring from the same order stream.
 - Three.js warehouse with one to four articulated human pickers, distinct real orders, selectable telemetry, a follow camera, and a route overlay driven by actual scoring events.
-- Slotting Lab with all 100 products and all 252 slots, empty-slot moves, swaps, undo, reset, browser-local persistence, JSON import/export, and baseline application.
+- Slotting Lab with all 100 products and all 252 slots, empty-slot moves, swaps, undo, reset, browser-local persistence, and JSON import/export.
+- AI Automation with observed units or distinct-order ranking, full-month or recent-week history, transparent weekly changes, proposal preview and application to player layout. This is not a trained forecast.
 - Analytics comparison and a spatial, layer-filtered rack heatmap generated from simulation events. Order charts include the return to dock.
 - A shared elapsed-time replay clock with pause/resume, restart, next event, order selection, and 1–60× speed. Handling time and the final dock return are animated and scored consistently.
 - WebGL and data-load recovery views.
@@ -28,7 +29,7 @@ Actual output: 83,215 eligible source lines, 100 products, 2,339 orders, 14,042 
 
 The warehouse is a 30 × 20 grid with 1.5 m cells, six rack blocks, a packing dock, and 252 valid rack-face slots. The picker uses four-direction A* and returns to the dock at the end of each order. The original layout is a disclosed neutral lexical-SKU placement because the source data includes no physical warehouse position.
 
-The baseline ranks products by eligible units and slots by dock round-trip cost, then assigns fast movers to lower-cost slots. Estimated time includes walking at 1.2 m/s plus 5 seconds per product line and 1 second per handled unit. These are simulation assumptions, not observed labour measurements.
+The baseline ranks products by eligible units and slots by dock round-trip walking time plus shelf-access time, then assigns fast movers to lower-cost slots. Estimated time includes walking at 1.2 m/s plus 5 seconds per product line and 1 second per handled unit, plus one shelf-access cycle per pick: L1 = 0 s, L2 = 6 s, L3 = 12 s. Access includes equipment positioning and retrieval access, not climbing racks. These are simulation assumptions, not observed labour measurements.
 
 Read the full [warehouse model](docs/warehouse-model.md) and [simulation methodology](docs/simulation-method.md).
 
@@ -43,7 +44,7 @@ npm run dev
 
 For the production preview, run `npm run build` then `npm run preview -- --host 127.0.0.1 --port 4174`. Open http://127.0.0.1:4174. The warehouse is a real Three.js scene, with no image background. Left drag or the Orbit/Pan/Zoom toolbar controls the camera; Reset restores the overview. Product categories are disclosed keyword groups inferred from descriptions, not fields supplied by UCI.
 
-The six KPI cards describe the **whole scored workload**. The right panels describe **only the selected order replay**. Distance reduction replaces an undefined “route efficiency” percentage: it has a documented denominator and makes no claim of optimal routing. Edits autosave in this browser when storage is available. Export a layout to transfer it to another browser.
+Digital Twin contains operational controls, the human team and 3D replay. Layout Lab contains manual editing. Analytics contains the full-workload comparison, charts and shelf-cost breakdown. AI Automation contains history-based slotting proposals. The right-hand replay panels describe only the selected worker and order. Distance reduction replaces an undefined “route efficiency” percentage: it has a documented denominator and makes no claim of optimal routing. Edits autosave in this browser when storage is available. Export a layout to transfer it to another browser.
 
 ## Verify
 
@@ -84,7 +85,7 @@ The prior private Sites project identity remains in `.openai/hosting.json` for p
 
 The scene supports one to four articulated human workers, each assigned a different consecutive real order. A wave starts at the selected order; departures are three simulated seconds apart. The final wave uses only the remaining orders. Select a worker in the team strip or scene and use **Follow picker** for a close view. Start, pause, speed, reset and event stepping use one clock for all workers. The wave finishes after every worker returns to the dock.
 
-Monthly KPIs remain aggregate worker distance/time across the entire dataset; they do not claim a concurrency speedup. The team strip separately shows elapsed wave time. Routes use a nearest-next-pick policy and do not model congestion, worker collisions, or vertical travel. Dock parking offsets and shelf-handling gestures are visual only. Batch picking, true drag-and-drop in the 3D scene, shared leaderboards, and measured warehouse calibration remain future work. Worker geometry and portraits are procedural project assets; no external character model is downloaded.
+Analytics totals remain aggregate worker distance/time across the entire dataset; they do not claim a concurrency speedup. The team strip separately shows elapsed wave time. Routes use a nearest-next-pick policy and do not model congestion, worker collisions, or continuous vertical motion. Shelf retrieval adds the explicit per-level time penalty described above. Dock parking offsets and shelf-handling gestures are visual only. Batch picking, true drag-and-drop in the 3D scene, shared leaderboards, and measured warehouse calibration remain future work. Worker geometry and portraits are procedural project assets; no external character model is downloaded.
 
 ## Architecture and demonstration
 

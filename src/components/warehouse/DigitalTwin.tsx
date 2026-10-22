@@ -96,17 +96,19 @@ const ProductBins = memo(function ProductBins({ products, layout, selectedProduc
 
 function PickerCamera({ worker, follow, cameraMode }: { worker?: PickerState; follow: boolean; cameraMode: DigitalTwinProps['cameraMode'] }) {
   const controls = useRef<OrbitControlsImpl>(null)
-  const { camera, invalidate } = useThree()
+  const { camera, invalidate, size } = useThree()
   const [worldX, , z] = toWorld(worker?.position ?? PACKING_DOCK)
   const parked = worker && (worker.waiting || worker.complete || worker.localElapsed === 0)
   const x = worldX + (parked ? (worker.id - 1) * 0.7 : 0)
   useEffect(() => {
     if (follow || !controls.current) return
-    camera.position.set(26, 29, 32)
+    const aspect = size.width / Math.max(1, size.height)
+    const distance = Math.max(52, 30 / (Math.tan(40 * Math.PI / 360) * aspect))
+    camera.position.set(26, 29, 32).normalize().multiplyScalar(distance)
     controls.current.target.set(0, 0, 0)
     controls.current.update()
     invalidate()
-  }, [follow, camera, invalidate])
+  }, [follow, camera, invalidate, size.width, size.height])
   useEffect(() => {
     if (!controls.current) return
     if (follow) {
@@ -116,7 +118,7 @@ function PickerCamera({ worker, follow, cameraMode }: { worker?: PickerState; fo
       invalidate()
     }
   }, [follow, x, z, camera, invalidate])
-  return <OrbitControls ref={controls} enabled={!follow} mouseButtons={{ LEFT: cameraMode === 'pan' ? MOUSE.PAN : cameraMode === 'zoom' ? MOUSE.DOLLY : MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }} makeDefault minDistance={3} maxDistance={70} maxPolarAngle={Math.PI / 2.1} />
+  return <OrbitControls ref={controls} enabled={!follow} mouseButtons={{ LEFT: cameraMode === 'pan' ? MOUSE.PAN : cameraMode === 'zoom' ? MOUSE.DOLLY : MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }} makeDefault minDistance={3} maxDistance={140} maxPolarAngle={Math.PI / 2.1} />
 }
 
 function WarehouseScene({ products, layout, activeEvent, workers, selectedPicker, followPicker, onSelectPicker, cameraMode, visibleLayer, selectedProductId, onSelectProduct }: DigitalTwinProps) {

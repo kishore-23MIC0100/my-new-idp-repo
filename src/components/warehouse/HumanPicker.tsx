@@ -15,7 +15,7 @@ export function HumanPicker({ worker }: { worker: PickerState }) {
   const walking = !worker.waiting && !worker.complete && !worker.handling && worker.localElapsed > 0
   const phase = worker.distance / 0.72 * Math.PI
   const stride = walking ? Math.sin(phase) * 0.48 : 0
-  const picking = !worker.waiting && worker.handling && worker.event?.kind === 'pick'
+  const picking = !worker.waiting && worker.handling && !worker.accessing && worker.event?.kind === 'pick'
   const reach = picking ? (0.5 - Math.cos(worker.handlingElapsed * 2.4) * 0.5) : 0
   const skin = skinTones[worker.id - 1]
   const vest = worker.id % 2 ? '#d8ec37' : '#ff982d'

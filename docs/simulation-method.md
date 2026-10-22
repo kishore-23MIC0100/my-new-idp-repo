@@ -13,13 +13,15 @@ For each order, the picker starts at the packing dock. The simulation selects th
 ## Time assumptions
 
 - Walking speed: 1.2 m/s.
-- Handling time: 5 seconds for each product line plus 1 second for each handled unit.
+- Base handling: 5 seconds for each product line plus 1 second for each handled unit.
+- Shelf access: L1 = 0 seconds, L2 = 6 seconds, L3 = 12 seconds per product pick. This is one access cycle per invoice/SKU, including setup and return to an aisle-ready position. It does not multiply by quantity.
+- The shelf constants are illustrative, uncalibrated retrieval-equipment assumptions, not measured labour times or an instruction to climb racks.
 
-Travel seconds equal route metres divided by walking speed. Estimated order time is travel seconds plus handling seconds. These are documented simulation assumptions, not real-world measurements.
+Travel seconds equal route metres divided by walking speed. Estimated order time is travel plus base handling plus shelf access. In the API, totalHandlingSeconds includes access, and totalShelfAccessSeconds exposes that subset. Analytics subtracts it from base handling to avoid double counting. These are documented simulation assumptions, not real-world measurements.
 
 ## Automatic baseline
 
-The baseline ranks products by eligible units ordered from the processed source data. It ranks valid slots by deterministic round-trip travel distance from the packing dock. It assigns high-frequency products to low-cost reachable slots, preserving one product per valid slot. This is a frequency-aware heuristic, not an AI model.
+The baseline ranks products by eligible units ordered from the processed source data. It ranks valid slots by deterministic round-trip travel seconds from the packing dock plus the slot level access seconds. It assigns high-frequency products to low-cost reachable slots, preserving one product per valid slot. This is a frequency-aware heuristic, not an AI model.
 
 ## Metrics
 
@@ -33,6 +35,15 @@ A negative result means the candidate is worse. A zero original denominator retu
 
 `events` contains product picks only and is the source for rack visits. `timeline` includes those same picks plus an explicit return-to-dock event for every order. `perOrder` includes all walking and handling. Summing its distances equals the headline distance; summing timeline segment lengths gives the same total. Tests assert both invariants against the actual dataset.
 
-The playback clock accumulates simulated seconds. Walking interpolates the actual scored waypoints at 1.2 m/s, then stays at the rack face during handling. A pick completes only after handling. Pause freezes elapsed time, and changing playback speed affects future clock increments only. The picker returns to the dock before an order is marked complete. Choosing another order restarts at its dock; orders can be selected individually.
+The playback clock accumulates simulated seconds. Walking interpolates the actual scored waypoints at 1.2 m/s, then stays at the rack face during the access phase, followed by base handling. Each event stores its own travelSeconds so custom walking-speed configurations replay consistently. A pick completes only after handling. Pause freezes elapsed time, and changing playback speed affects future clock increments only. The picker returns to the dock before an order is marked complete. Choosing another order restarts at its dock; orders can be selected individually.
 
 The baseline retains monthly eligible units as its declared frequency measure. This differs from invoice occurrence frequency; both definitions are valid modelling choices, but this application never substitutes one silently. Shelf access points at all three levels share horizontal travel cost. Estimated time is not a field measured in Retail II.
+
+
+## AI Automation: observed activity, not forecasting
+
+The Automation tab computes product statistics directly from invoice/SKU records. Units sum quantities; order frequency counts distinct orders containing the SKU. Users select the full available month or the last seven calendar days, anchored to the latest date in the dataset rather than the current date. Scores equal the selected observed count; they are not fitted model predictions. Zero-activity SKUs remain assigned with stable ID tie-breaking.
+
+The last seven days and preceding seven days are displayed separately. Percentage change is unavailable if the previous count is zero (reported as new/no activity). Insufficient preceding history is labelled. No weekday or seasonal pattern is inferred from one month.
+
+Ranked products are assigned to slots in ascending round-trip walk seconds plus level-access seconds. The proposal is previewed by replaying the same full-month orders used by Original, Baseline and Player. This in-sample comparison tests a proposed arrangement under a fixed workload; it does not measure forecasting accuracy or future demand. Apply replaces Player immutably, saves locally and supports Undo in Layout Lab.
