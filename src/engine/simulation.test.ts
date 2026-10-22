@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createOriginalLayout } from './warehouse'
-import { calculateReductionPercent, compareLayouts, createFastMoverLayout, simulateOrders, type Product, type WarehouseOrder } from './simulation'
+import { DEFAULT_SIMULATION_CONFIG, calculateReductionPercent, compareLayouts, createFastMoverLayout, simulateOrders, type Product, type WarehouseOrder } from './simulation'
 
 const products: Product[] = [
   { id: 'FAST', pickFrequency: 100 },
@@ -14,7 +14,7 @@ const orders: WarehouseOrder[] = [
 describe('simulation engine', () => {
   it('rejects non-finite and negative configuration and quantities', () => {
     const layout = createOriginalLayout(['FAST', 'SLOW'])
-    for (const speed of [NaN, Infinity, 0, -1]) expect(() => simulateOrders(orders, ['FAST', 'SLOW'], layout, { walkingSpeedMetersPerSecond: speed, handlingSecondsPerLine: 5, handlingSecondsPerUnit: 1 })).toThrow()
+    for (const speed of [NaN, Infinity, 0, -1]) expect(() => simulateOrders(orders, ['FAST', 'SLOW'], layout, { ...DEFAULT_SIMULATION_CONFIG, walkingSpeedMetersPerSecond: speed })).toThrow()
     expect(() => simulateOrders([{ ...orders[0], items: [{ productId: 'FAST', quantity: NaN }] }], ['FAST', 'SLOW'], layout)).toThrow()
     expect(() => simulateOrders([{ ...orders[0], items: [{ productId: 'FAST', quantity: 1 }, { productId: 'FAST', quantity: 1 }] }], ['FAST', 'SLOW'], layout)).toThrow()
   })

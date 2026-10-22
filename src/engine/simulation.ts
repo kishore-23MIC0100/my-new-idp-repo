@@ -18,12 +18,14 @@ export type SimulationConfig = Readonly<{
   walkingSpeedMetersPerSecond: number
   handlingSecondsPerLine: number
   handlingSecondsPerUnit: number
+  shelfAccessSeconds: readonly [number, number, number]
 }>
 
 export const DEFAULT_SIMULATION_CONFIG: SimulationConfig = {
   walkingSpeedMetersPerSecond: 1.2,
   handlingSecondsPerLine: 5,
   handlingSecondsPerUnit: 1,
+  shelfAccessSeconds: [0, 6, 12],
 }
 
 export type PickEvent = Readonly<{
@@ -33,6 +35,8 @@ export type PickEvent = Readonly<{
   slotId: string
   route: readonly GridPoint[]
   travelDistanceMeters: number
+  travelSeconds: number
+  accessSeconds: number
   handlingSeconds: number
 }>
 
@@ -41,6 +45,7 @@ export type SimulationMetrics = Readonly<{
   averageWalkingDistanceMeters: number
   totalTravelSeconds: number
   totalHandlingSeconds: number
+  totalShelfAccessSeconds: number
   totalEstimatedSeconds: number
   averageEstimatedSeconds: number
   completedOrders: number
@@ -95,12 +100,14 @@ export function simulateOrders(
   validateLayout(layout, productIds)
   if (!Number.isFinite(config.walkingSpeedMetersPerSecond) || config.walkingSpeedMetersPerSecond <= 0) throw new Error('Walking speed must be positive and finite')
   if (![config.handlingSecondsPerLine, config.handlingSecondsPerUnit].every((value) => Number.isFinite(value) && value >= 0)) throw new Error('Handling times must be finite and nonnegative')
+  if (config.shelfAccessSeconds?.length !== 3 || !config.shelfAccessSeconds.every((value, index, all) => Number.isFinite(value) && value >= 0 && (index === 0 || value >= all[index - 1]))) throw new Error('Shelf access times must be three finite, nonnegative, nondecreasing values')
   const events: PickEvent[] = []
   const timeline: PickEvent[] = []
   const perOrder: { orderId: string; distanceMeters: number; estimatedSeconds: number }[] = []
   const rackVisits: Record<string, number> = {}
   let totalDistance = 0
   let totalHandlingSeconds = 0
+  let totalShelfAccessSeconds = 0
   let totalUnits = 0
 
   for (const order of orders) {
@@ -120,7 +127,8 @@ export function simulateOrders(
       const route = routeOrThrow(current, slotId)
       const slot = getSlot(slotId)
       if (!slot) throw new Error(`Layout references missing slot ${slotId}`)
-      const handlingSeconds = config.handlingSecondsPerLine + next.quantity * config.handlingSecondsPerUnit
+      const accessSeconds = config.shelfAccessSeconds[slot.level - 1]
+      const handlingSeconds = config.handlingSecondsPerLine + next.quantity * config.handlingSecondsPerUnit + accessSeconds
       events.push({
         kind: 'pick',
         orderId: order.id,
@@ -128,11 +136,14 @@ export function simulateOrders(
         slotId,
         route: route.points,
         travelDistanceMeters: route.distanceMeters,
+        travelSeconds: route.distanceMeters / config.walkingSpeedMetersPerSecond,
+        accessSeconds,
         handlingSeconds,
       })
       timeline.push(events[events.length - 1])
       totalDistance += route.distanceMeters
       totalHandlingSeconds += handlingSeconds
+      totalShelfAccessSeconds += accessSeconds
       totalUnits += next.quantity
       rackVisits[slot.rackId] = (rackVisits[slot.rackId] ?? 0) + 1
       current = slot.access
@@ -141,7 +152,7 @@ export function simulateOrders(
     const returnRoute = findShortestRoute(current, PACKING_DOCK)
     if (!returnRoute) throw new Error(`No return route exists for order ${order.id}`)
     totalDistance += returnRoute.distanceMeters
-    timeline.push({ kind: 'return', orderId: order.id, productId: '', slotId: 'DOCK', route: returnRoute.points, travelDistanceMeters: returnRoute.distanceMeters, handlingSeconds: 0 })
+    timeline.push({ kind: 'return', orderId: order.id, productId: '', slotId: 'DOCK', route: returnRoute.points, travelDistanceMeters: returnRoute.distanceMeters, travelSeconds: returnRoute.distanceMeters / config.walkingSpeedMetersPerSecond, handlingSeconds: 0, accessSeconds: 0 })
     const distanceMeters = totalDistance - distanceBefore
     perOrder.push({ orderId: order.id, distanceMeters, estimatedSeconds: distanceMeters / config.walkingSpeedMetersPerSecond + totalHandlingSeconds - handlingBefore })
   }
@@ -159,6 +170,7 @@ export function simulateOrders(
       averageWalkingDistanceMeters: completedOrders ? totalDistance / completedOrders : 0,
       totalTravelSeconds,
       totalHandlingSeconds,
+      totalShelfAccessSeconds,
       totalEstimatedSeconds,
       averageEstimatedSeconds: completedOrders ? totalEstimatedSeconds / completedOrders : 0,
       completedOrders,
@@ -168,20 +180,22 @@ export function simulateOrders(
   }
 }
 
-/** Assign fastest-moving products to the lowest round-trip dock cost slots, deterministically. */
-export function createFastMoverLayout(products: readonly Product[]): ProductLayout {
+/** Assign observed activity ranks to slots ordered by walk time plus shelf access time. */
+export function createFastMoverLayout(products: readonly Product[], config: SimulationConfig = DEFAULT_SIMULATION_CONFIG): ProductLayout {
   const productIds = products.map((product) => product.id)
   if (new Set(productIds).size !== productIds.length) throw new Error('Products must have unique IDs')
   if (products.length > VALID_SLOTS.length) throw new Error('Warehouse does not have enough valid slots')
+  if (products.some(p => !Number.isFinite(p.pickFrequency) || p.pickFrequency < 0)) throw new Error('Activity scores must be finite and nonnegative')
+  if (!Number.isFinite(config.walkingSpeedMetersPerSecond) || config.walkingSpeedMetersPerSecond <= 0 || config.shelfAccessSeconds?.length !== 3 || !config.shelfAccessSeconds.every((value, i, all) => Number.isFinite(value) && value >= 0 && (i === 0 || value >= all[i - 1]))) throw new Error('Invalid slot cost configuration')
   const rankedProducts = [...products].sort((a, b) => b.pickFrequency - a.pickFrequency || a.id.localeCompare(b.id))
   const rankedSlots = [...VALID_SLOTS]
     .map((slot) => {
       const out = routeToSlot(PACKING_DOCK, slot.id)
       const back = findShortestRoute(slot.access, PACKING_DOCK)
       if (!out || !back) throw new Error(`Slot ${slot.id} is not reachable from the dock`)
-      return { slot, roundTripMeters: out.distanceMeters + back.distanceMeters }
+      return { slot, costSeconds: (out.distanceMeters + back.distanceMeters) / config.walkingSpeedMetersPerSecond + config.shelfAccessSeconds[slot.level - 1] }
     })
-    .sort((a, b) => a.roundTripMeters - b.roundTripMeters || a.slot.id.localeCompare(b.slot.id))
+    .sort((a, b) => a.costSeconds - b.costSeconds || a.slot.id.localeCompare(b.slot.id))
   return Object.fromEntries(rankedProducts.map((product, index) => [product.id, rankedSlots[index].slot.id]))
 }
 
@@ -201,7 +215,7 @@ export function compareLayouts(
   // starting layout: product codes in lexical order, never the frequency-ranked input order.
   const originalLayout = createOriginalLayout([...productIds].sort())
   const original = simulateOrders(orders, productIds, originalLayout, config)
-  const automatic = simulateOrders(orders, productIds, createFastMoverLayout(products), config)
+  const automatic = simulateOrders(orders, productIds, createFastMoverLayout(products, config), config)
   const player = simulateOrders(orders, productIds, playerLayout ?? originalLayout, config)
   return {
     original,

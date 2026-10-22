@@ -1,7 +1,7 @@
 import { CELL_SIZE_METERS, PACKING_DOCK, getSlot, type GridPoint } from './warehouse'
-import { DEFAULT_SIMULATION_CONFIG, type PickEvent } from './simulation'
+import { type PickEvent } from './simulation'
 
-export const eventSeconds = (event: PickEvent) => event.travelDistanceMeters / DEFAULT_SIMULATION_CONFIG.walkingSpeedMetersPerSecond + event.handlingSeconds
+export const eventSeconds = (event: PickEvent) => event.travelSeconds + event.handlingSeconds
 
 /** One clock drives both the scene and telemetry. Elapsed time includes handling. */
 export function playbackAt(timeline: readonly PickEvent[], elapsed: number) {
@@ -12,7 +12,7 @@ export function playbackAt(timeline: readonly PickEvent[], elapsed: number) {
     const event = timeline[index]
     const duration = eventSeconds(event)
     if (elapsed < start + duration) {
-      const travelled = Math.min(event.travelDistanceMeters, Math.max(0, elapsed - start) * DEFAULT_SIMULATION_CONFIG.walkingSpeedMetersPerSecond)
+      const travelled = event.travelSeconds > 0 ? Math.min(event.travelDistanceMeters, Math.max(0, elapsed - start) / event.travelSeconds * event.travelDistanceMeters) : 0
       const pathIndex = travelled / CELL_SIZE_METERS
       const segment = Math.min(Math.floor(pathIndex), event.route.length - 1)
       const a = event.route[segment] ?? PACKING_DOCK
@@ -22,12 +22,13 @@ export function playbackAt(timeline: readonly PickEvent[], elapsed: number) {
       const handling = travelled >= event.travelDistanceMeters
       const target = handling && event.kind === 'pick' ? getSlot(event.slotId)?.position : b
       const heading = target ? Math.atan2(target.x - position.x, target.y - position.y) : 0
-      const handlingElapsed = Math.max(0, elapsed - start - event.travelDistanceMeters / DEFAULT_SIMULATION_CONFIG.walkingSpeedMetersPerSecond)
-      return { event, index, completedPicks, position, heading, handlingElapsed, distance: distance + travelled, handling, complete: false }
+      const handlingElapsed = Math.max(0, elapsed - start - event.travelSeconds)
+      const accessing = handling && handlingElapsed < event.accessSeconds
+      return { event, index, completedPicks, position, heading, handlingElapsed, accessing, distance: distance + travelled, handling, complete: false }
     }
     start += duration
     distance += event.travelDistanceMeters
     if (event.kind === 'pick') completedPicks++
   }
-  return { event: undefined, index: timeline.length, completedPicks, position: PACKING_DOCK, heading: 0, handlingElapsed: 0, distance, handling: false, complete: true }
+  return { event: undefined, index: timeline.length, completedPicks, position: PACKING_DOCK, heading: 0, handlingElapsed: 0, accessing: false, distance, handling: false, complete: true }
 }
