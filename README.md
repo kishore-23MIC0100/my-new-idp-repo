@@ -75,7 +75,7 @@ python3 scripts/process_retail_data.py /path/to/online_retail_II.xlsx
 
 ## Deploy
 
-**Live demo:** [https://my-new-idp-repo.vercel.app](https://my-new-idp-repo.vercel.app)
+**Live demo:** https://my-new-idp-repo-i-dev1.vercel.app/
 
 **Public repository:** [https://github.com/kishore-23MIC0100/my-new-idp-repo](https://github.com/kishore-23MIC0100/my-new-idp-repo)
 
