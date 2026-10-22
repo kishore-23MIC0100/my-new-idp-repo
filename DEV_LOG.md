@@ -46,7 +46,7 @@ Final dataset scores observed in the rendered application: original walking 196.
 
 The Sites source helper verified push and packaged commit `33e8626ef2bd5647b74c35f39a615ef958d4fee3`. Native private deployment `appgdep_6ad95eb6caa08191808f06a938859ee1` returned `succeeded` with no failure message.
 
-Live URL: https://my-new-idp-repo.vercel.app/
+Live URL: https://my-new-idp-repo-i-dev1.vercel.app/
 
 Saved version: `appgprj_6ad90ecb2b288191a9542a003a95a4a0~appgver_6c40c99cded081919a2d3efd950a55d7`. Audience remains owner-private. Deployment archive: `D:\nexai-deliverables\warehouse-site.tar.gz`. The first packaging attempt hit a Windows root-directory mkdir error; using an existing output subdirectory resolved it. The source credential was renewed when its original short-lived authorization expired. No credentials were written to the repository.
 
