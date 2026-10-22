@@ -25,9 +25,7 @@ function RackHeatmap({ result }: { result: SimulationResult }) {
 }
 
 function orderDistances(result: SimulationResult) {
-  const totals = new Map<string, number>()
-  for (const event of result.events) totals.set(event.orderId, (totals.get(event.orderId) ?? 0) + event.travelDistanceMeters)
-  return [...totals.values()]
+  return result.orderDistances.map(({ distanceMeters }) => distanceMeters)
 }
 
 export function AnalyticsView({ comparison, products }: AnalyticsViewProps) {

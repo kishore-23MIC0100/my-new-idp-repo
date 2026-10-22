@@ -12,7 +12,7 @@ import {
 
 export type Product = Readonly<{ id: string; pickFrequency: number }>
 export type OrderItem = Readonly<{ productId: string; quantity: number }>
-export type WarehouseOrder = Readonly<{ id: string; timestamp: string; items: readonly OrderItem[] }>
+export type WarehouseOrder = Readonly<{ id: string; sourceInvoiceId?: string; timestamp: string; items: readonly OrderItem[] }>
 
 export type SimulationConfig = Readonly<{
   walkingSpeedMetersPerSecond: number
@@ -91,7 +91,8 @@ export function simulateOrders(
   config: SimulationConfig = DEFAULT_SIMULATION_CONFIG,
 ): SimulationResult {
   validateLayout(layout, productIds)
-  if (config.walkingSpeedMetersPerSecond <= 0) throw new Error('Walking speed must be positive')
+  if (!Number.isFinite(config.walkingSpeedMetersPerSecond) || config.walkingSpeedMetersPerSecond <= 0) throw new Error('Walking speed must be a finite positive value')
+  if (!Number.isFinite(config.handlingSecondsPerLine) || config.handlingSecondsPerLine < 0 || !Number.isFinite(config.handlingSecondsPerUnit) || config.handlingSecondsPerUnit < 0) throw new Error('Handling times must be finite non-negative values')
   const events: PickEvent[] = []
   const orderDistances: { orderId: string; distanceMeters: number }[] = []
   const rackVisits: Record<string, number> = {}
@@ -103,7 +104,7 @@ export function simulateOrders(
     if (!order.items.length) throw new Error(`Order ${order.id} contains no items`)
     const seen = new Set<string>()
     for (const item of order.items) {
-      if (!layout[item.productId] || item.quantity <= 0 || seen.has(item.productId)) throw new Error(`Order ${order.id} is invalid for this layout`)
+      if (!layout[item.productId] || !Number.isFinite(item.quantity) || item.quantity <= 0 || seen.has(item.productId)) throw new Error(`Order ${order.id} is invalid for this layout`)
       seen.add(item.productId)
     }
     const remaining = [...order.items]
@@ -164,6 +165,7 @@ export function simulateOrders(
 export function createFastMoverLayout(products: readonly Product[]): ProductLayout {
   const productIds = products.map((product) => product.id)
   if (new Set(productIds).size !== productIds.length) throw new Error('Products must have unique IDs')
+  if (products.some((product) => !Number.isFinite(product.pickFrequency) || product.pickFrequency < 0)) throw new Error('Pick frequencies must be finite non-negative values')
   if (products.length > VALID_SLOTS.length) throw new Error('Warehouse does not have enough valid slots')
   const rankedProducts = [...products].sort((a, b) => b.pickFrequency - a.pickFrequency || a.id.localeCompare(b.id))
   const rankedSlots = [...VALID_SLOTS]

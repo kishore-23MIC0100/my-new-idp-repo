@@ -8,6 +8,7 @@ An interactive browser-based warehouse slotting game built from a processed UCI 
 - Deterministic A* routes that respect rack obstacles and rack-face access points.
 - Fair original, automatic fast-mover, and player-layout scoring from the same order stream.
 - Three.js warehouse with a picker and route overlay that consume actual scoring events.
+- Layer filters switch to the rack model and show only the selected shelf level; replay also switches to the live model so the picker follows walkable aisle paths.
 - Slotting Lab with search, product swapping, undo, reset, session-local layout persistence, and baseline application.
 - Analytics comparison and a rack-visit heatmap generated from simulation events.
 - WebGL and data-load recovery views.
@@ -15,7 +16,7 @@ An interactive browser-based warehouse slotting game built from a processed UCI 
 
 ## Technology
 
-React, Vite, TypeScript, Three.js, React Three Fiber, Drei, Recharts, Lucide React, Vitest, Python, pandas, and openpyxl.
+React 18, Vite, strict TypeScript, Three.js, React Three Fiber, Drei, Recharts, Lucide React, Vitest, Python, pandas, and openpyxl. Frontend dependencies are pinned in `package-lock.json` so fresh installs use the same major versions as the tested build.
 
 ## Dataset and processing
 
@@ -34,24 +35,42 @@ Read the full [warehouse model](docs/warehouse-model.md) and [simulation methodo
 ## Run locally
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
 ## Verify
 
+Install Python dependencies once for the dataset-processing tests:
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+Then run the full local gate:
+
+```bash
+npm run verify
+```
+
+Or run the checks individually:
+
 ```bash
 npm run check
 npm run test
+npm run test:python
+npm run audit
 npm run build
 ```
+
+The same checks run on pushes and pull requests through `.github/workflows/verify.yml`.
 
 ## Regenerate the dataset
 
 The source workbook is intentionally not committed. With an authorized local copy:
 
 ```bash
-/Users/kishore/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/process_retail_data.py /path/to/online_retail_II.xlsx
+python3 scripts/process_retail_data.py /path/to/online_retail_II.xlsx
 ```
 
 ## Deploy
@@ -64,4 +83,4 @@ This MVP models a single picker, no congestion, and a nearest-next-pick order po
 
 ## Team and links
 
-Add team members, deployment URL, demo video, and development log link before final competition submission.
+Before submission, add your team names, deployment URL, demo video, and required track materials.

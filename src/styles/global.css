@@ -159,3 +159,34 @@ nav { display: flex; align-self: stretch; } nav button { position: relative; col
 .pick-row.current > strong, .pick-row.next > strong { color: #effaff; }
 .order-pick-empty { margin: 8px 0 2px; color: #87a5c5; font-size: 8px; }
 @media (max-width: 720px) { .order-pick-list { max-height: 190px; }.pick-row { grid-template-columns: 20px minmax(0, 1fr) 82px; } }
+
+/* Keep all 100 SKUs and occupied slots reachable without turning each into a long page. */
+.app-shell.mode-layout .product-list { max-height: min(220px, 27vh); overflow: auto; scrollbar-width: thin; scrollbar-color: #1679a8 #0a1b34; }
+.app-shell.mode-layout .slot-list { max-height: min(300px, 34vh); overflow: auto; scrollbar-width: thin; scrollbar-color: #1679a8 #0a1b34; }
+.app-shell.mode-layout .product-list button { cursor: grab; }
+.app-shell.mode-layout .product-list button:active { cursor: grabbing; }
+.app-shell.mode-layout .product-list button.dragging { opacity: .48; }
+.app-shell.mode-layout .slot-list button.drop-target { border-color: #00e5ff; background: #0a4260; box-shadow: 0 0 12px #00d9ff55; }
+@media (prefers-reduced-motion: reduce) {
+  .order-progress-track > i { transition: none; }
+  .app-shell.mode-layout .slot-list button.drop-target { box-shadow: none; }
+}
+.camera-modes { display: flex; gap: 2px; padding: 2px; border: 1px solid #275787; border-radius: 5px; background: #071a32; }
+.viewport-tools .camera-modes button { padding: 5px 7px; border-color: transparent; }
+.viewport-tools .camera-modes button.active { border-color: #00d9f5; background: #073c58; color: #d9fbff; }
+.viewport-tools button[aria-pressed="true"] { color: #e8fbff; }
+.dialog-backdrop { position: fixed; z-index: 30; inset: 0; display: grid; place-items: center; padding: 18px; background: #020914c9; backdrop-filter: blur(5px); }
+.info-dialog { position: relative; width: min(530px, 100%); max-height: min(82dvh, 650px); overflow: auto; padding: 24px; border: 1px solid #1579a9; border-radius: 10px; background: linear-gradient(145deg, #0c2850, #06152d); box-shadow: 0 24px 80px #000a, inset 0 0 24px #00b5ff0d; }
+.info-dialog h2 { margin: 0 38px 8px 0; color: #ecfaff; font-size: 20px; }
+.info-dialog p { margin: 0 0 18px; color: #a9c4e2; font-size: 12px; line-height: 1.5; }
+.info-dialog dl { display: grid; gap: 8px; margin: 0; }
+.info-dialog dl > div { display: grid; grid-template-columns: minmax(115px, .7fr) 1.4fr; gap: 12px; padding: 9px 10px; border: 1px solid #1d4269; border-radius: 5px; background: #071a34; }
+.info-dialog dt { color: #8fb3d7; font: 10px 'DM Mono', monospace; }
+.info-dialog dd { margin: 0; color: #e3f3ff; font-size: 11px; }
+.dialog-close { position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border: 1px solid #275787; border-radius: 5px; background: #081b36; color: #cbe7ff; font-size: 20px; }
+.dialog-dismiss { margin-top: 18px; padding: 8px 15px; border: 1px solid #00c9ef; border-radius: 5px; background: #08a9d4; color: #031622; font-weight: 700; }
+@media (max-width: 720px) { .viewport-tools { max-width: calc(100% - 12px); flex-wrap: wrap; justify-content: flex-end; }.info-dialog { padding: 20px 16px; }.info-dialog dl > div { grid-template-columns: 1fr; gap: 4px; } }
+
+/* Keep the photographic floor plate in lockstep with OrbitControls' dolly zoom. */
+.warehouse-plate { transform: scale(var(--camera-plate-zoom, 1)); transform-origin: center; will-change: transform; }
+.viewport-panel:before { content: '3D WAREHOUSE FLOOR · ' attr(data-layer-summary); }

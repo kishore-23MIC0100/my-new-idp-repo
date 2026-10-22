@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createOriginalLayout } from './warehouse'
-import { calculateReductionPercent, compareLayouts, createFastMoverLayout, simulateOrders, type Product, type WarehouseOrder } from './simulation'
+import { calculateReductionPercent, compareLayouts, createFastMoverLayout, DEFAULT_SIMULATION_CONFIG, simulateOrders, type Product, type WarehouseOrder } from './simulation'
 
 const products: Product[] = [
   { id: 'FAST', pickFrequency: 100 },
@@ -41,5 +41,11 @@ describe('simulation engine', () => {
   it('shows negative reductions and has an explicit zero-baseline result', () => {
     expect(calculateReductionPercent(100, 120)).toBe(-20)
     expect(calculateReductionPercent(0, 0)).toBeNull()
+  })
+
+  it('rejects non-finite route and handling assumptions', () => {
+    const layout = createOriginalLayout(products.map((product) => product.id))
+    expect(() => simulateOrders(orders, products.map((product) => product.id), layout, { ...DEFAULT_SIMULATION_CONFIG, walkingSpeedMetersPerSecond: Number.NaN })).toThrow(/finite positive/)
+    expect(() => simulateOrders(orders, products.map((product) => product.id), layout, { ...DEFAULT_SIMULATION_CONFIG, handlingSecondsPerLine: -1 })).toThrow(/non-negative/)
   })
 })

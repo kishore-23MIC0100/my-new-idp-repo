@@ -128,6 +128,7 @@ export function routeToSlot(start: GridPoint, slotId: string): Route | null {
 }
 
 export function createOriginalLayout(productIds: readonly string[]): ProductLayout {
+  if (new Set(productIds).size !== productIds.length) throw new Error('Product IDs must be unique')
   if (productIds.length > VALID_SLOTS.length) throw new Error('Warehouse does not have enough valid slots for these products')
   return Object.fromEntries(productIds.map((productId, index) => [productId, VALID_SLOTS[index].id]))
 }

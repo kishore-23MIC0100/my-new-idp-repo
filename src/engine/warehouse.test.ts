@@ -39,6 +39,7 @@ describe('warehouse route engine', () => {
     expect(Object.keys(layout)).toEqual(products)
     validateLayout(layout, products)
     expect(() => validateLayout({ A: VALID_SLOTS[0].id, B: VALID_SLOTS[0].id, C: VALID_SLOTS[2].id }, products)).toThrow('duplicate')
+    expect(() => createOriginalLayout(['A', 'A'])).toThrow('unique')
     expect(getSlot(layout.A)).toBeDefined()
   })
 })
