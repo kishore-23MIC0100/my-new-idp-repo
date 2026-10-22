@@ -74,7 +74,7 @@ Dataset attribution: Chen, D. (2012). Online Retail II [Dataset]. UCI Machine Le
 
 ## Deploy
 
-Live application: **https://my-new-idp-repo-i-dev1.vercel.app/**. The verified human-team implementation is on [`feat/complete-warehouse-twin`](https://github.com/kishore-23MIC0100/my-new-idp-repo/tree/feat/complete-warehouse-twin). This release was deployed explicitly from that branch; existing independent work on `main` was preserved.
+Live application: **https://my-new-idp-repo-git-feat-complete-warehouse-twin-i-dev1.vercel.app/**. The verified human-team implementation is on [`feat/complete-warehouse-twin`](https://github.com/kishore-23MIC0100/my-new-idp-repo/tree/feat/complete-warehouse-twin). This release was deployed explicitly from that branch; existing independent work on `main` was preserved.
 
 Vercel project: `i-dev1/my-new-idp-repo`. Use the repository root, Vite framework, `npm ci`, build command `npm run build`, and output directory `dist`. The application is static and needs no runtime credentials. After authenticating, link the existing project and run `vercel deploy --prod` from the tested checkout. Avoid selecting the separate upstream `warehouse-dashboard/` prototype as this application's root.
 
