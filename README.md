@@ -7,7 +7,7 @@ An interactive browser-based warehouse slotting game built from a processed UCI 
 - Real-data preprocessing for November 2011: 100 products and 2,339 exported orders.
 - Deterministic A* routes that respect rack obstacles and rack-face access points.
 - Fair original, automatic fast-mover, and player-layout scoring from the same order stream.
-- Three.js warehouse with a picker and route overlay that consume actual scoring events.
+- Three.js warehouse with one to four articulated human pickers, distinct real orders, selectable telemetry, a follow camera, and a route overlay driven by actual scoring events.
 - Slotting Lab with all 100 products and all 252 slots, empty-slot moves, swaps, undo, reset, browser-local persistence, JSON import/export, and baseline application.
 - Analytics comparison and a spatial, layer-filtered rack heatmap generated from simulation events. Order charts include the return to dock.
 - A shared elapsed-time replay clock with pause/resume, restart, next event, order selection, and 1–60× speed. Handling time and the final dock return are animated and scored consistently.
@@ -74,7 +74,11 @@ Dataset attribution: Chen, D. (2012). Online Retail II [Dataset]. UCI Machine Le
 
 ## Deploy
 
-The application is a static export: host `dist/` on any static web server. Vercel configuration is retained; build command `npm run build`, output `dist`. The Sites project identity is tracked in `.openai/hosting.json`. Hosting status is recorded in `DEV_LOG.md`; registration alone is not a deployment.
+Live application: **https://my-new-idp-repo.vercel.app**. The verified human-team implementation is on [`feat/complete-warehouse-twin`](https://github.com/kishore-23MIC0100/my-new-idp-repo/tree/feat/complete-warehouse-twin). This release was deployed explicitly from that branch; existing independent work on `main` was preserved.
+
+Vercel project: `i-dev1/my-new-idp-repo`. Use the repository root, Vite framework, `npm ci`, build command `npm run build`, and output directory `dist`. The application is static and needs no runtime credentials. After authenticating, link the existing project and run `vercel deploy --prod` from the tested checkout. Avoid selecting the separate upstream `warehouse-dashboard/` prototype as this application's root.
+
+The prior private Sites project identity remains in `.openai/hosting.json` for provenance. Current Vercel release IDs and verification evidence are recorded in `DEV_LOG.md`. The local source archive and screenshots are additional handoff artifacts; the original workbook is kept outside Git.
 
 ## Limitations and next steps
 
