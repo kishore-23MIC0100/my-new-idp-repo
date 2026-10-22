@@ -128,22 +128,11 @@ test('malformed dataset gives retry instead of a false loaded state', async ({ p
   await expect(page.getByText('Data error', { exact: false })).toBeVisible()
 })
 
-test('observed automation applies a valid proposal and analytics exports shelf costs', async ({ page }) => {
+test('analytics exports reconciled simulation metrics', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByText('Data loaded', { exact: false })).toBeVisible()
-  await page.getByRole('button', { name: 'AI Automation', exact: true }).click()
-  await expect(page.locator('canvas, .sidebar, .team-bar')).toHaveCount(0)
-  await expect(page.locator('.model-disclosure')).toContainText('not a trained demand forecast')
-  await expect(page.locator('.activity-table tbody tr')).toHaveCount(100)
-  await page.locator('#activity-metric').selectOption('units')
-  await page.locator('#activity-window').selectOption('7')
-  await expect(page.locator('.automation-controls')).toContainText('2011-11-24 to 2011-11-30')
-  const proposedTime = await page.locator('.automation-summary strong').nth(1).innerText()
-  await page.screenshot({ path: 'artifacts/automation-desktop.png', fullPage: true })
-  await page.getByRole('button', { name: 'Apply proposal to player layout' }).click()
-  await expect(page.getByRole('status')).toContainText('Automation proposal applied')
-  await page.getByRole('button', { name: 'Open Analytics', exact: true }).click()
-  await expect(page.locator('tr[data-layout="player"] td').nth(5)).toHaveText(proposedTime)
+  await page.getByRole('button', { name: 'Analytics', exact: true }).click()
+  await expect(page.getByRole('table', { name: 'Full workload comparison' })).toBeVisible()
   const beforeFilter = await page.getByRole('table', { name: 'Full workload comparison' }).innerText()
   await page.getByLabel('Analytics heatmap layer').selectOption('3')
   expect(await page.getByRole('table', { name: 'Full workload comparison' }).innerText()).toBe(beforeFilter)
@@ -155,9 +144,6 @@ test('observed automation applies a valid proposal and analytics exports shelf c
   expect(result.player.totalEstimatedSeconds).toBeCloseTo(result.player.totalTravelSeconds + result.player.totalHandlingSeconds)
   expect(result.player.totalShelfAccessSeconds).toBeGreaterThanOrEqual(0)
   await page.screenshot({ path: 'artifacts/analytics-desktop.png', fullPage: true })
-  await page.getByRole('button', { name: 'AI Automation', exact: true }).click()
-  await expect(page.locator('#activity-metric')).toHaveValue('units')
-  await expect(page.locator('#activity-window')).toHaveValue('7')
 })
 
 test('readable controls and each dedicated tab fit a narrow screen', async ({ page }) => {
@@ -165,10 +151,10 @@ test('readable controls and each dedicated tab fit a narrow screen', async ({ pa
   await page.goto('/')
   await expect(page.getByText('Data loaded', { exact: false })).toBeVisible()
   expect(await page.locator('#picker-count').evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(14)
-  for (const tab of ['Layout Lab', 'Analytics', 'AI Automation']) {
+  for (const tab of ['Layout Lab', 'Analytics']) {
     await page.getByRole('button', { name: tab, exact: true }).click()
     await expect(page.locator('canvas, .sidebar, .team-bar')).toHaveCount(0)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   }
-  await page.screenshot({ path: 'artifacts/automation-mobile.png', fullPage: true })
+  await page.screenshot({ path: 'artifacts/tabs-mobile.png', fullPage: true })
 })

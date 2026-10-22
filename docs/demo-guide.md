@@ -5,8 +5,7 @@
 3. Switch to Automatic baseline. Compare distance and estimated time using the unchanged workload. The baseline is a frequency heuristic, not an AI or optimality claim.
 4. Open Layout Lab, choose a SKU and empty destination, apply the move, observe rescoring, then undo. Export the layout and import it again.
 5. Open Analytics. Explain separate travel, base handling and shelf-access times, the return-inclusive chart, the spatial heatmap, and layer filtering. Export the scored results.
-6. Open AI Automation. Choose order frequency or units, switch between the full month and recent seven days, inspect the dated ranking and weekly changes, then apply a proposal. Show its result as Player in Analytics and Undo in Layout Lab. Explain that this is observed activity and in-sample evaluation, not a trained forecast.
-7. Show Settings for methodology, attribution and limitations. Explain that category names are inferred from descriptions.
+6. Show Settings for methodology, attribution and limitations. Explain that category names are inferred from descriptions.
 
 For a recording, use a desktop viewport of at least 1280 × 850. The mobile layout retains navigation, playback and the editor, with telemetry below the viewport. Keep the source workbook outside the repository and record only product/order data, not customer records.
 

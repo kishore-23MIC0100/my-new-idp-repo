@@ -38,12 +38,3 @@ A negative result means the candidate is worse. A zero original denominator retu
 The playback clock accumulates simulated seconds. Walking interpolates the actual scored waypoints at 1.2 m/s, then stays at the rack face during the access phase, followed by base handling. Each event stores its own travelSeconds so custom walking-speed configurations replay consistently. A pick completes only after handling. Pause freezes elapsed time, and changing playback speed affects future clock increments only. The picker returns to the dock before an order is marked complete. Choosing another order restarts at its dock; orders can be selected individually.
 
 The baseline retains monthly eligible units as its declared frequency measure. This differs from invoice occurrence frequency; both definitions are valid modelling choices, but this application never substitutes one silently. Shelf access points at all three levels share horizontal travel cost. Estimated time is not a field measured in Retail II.
-
-
-## AI Automation: observed activity, not forecasting
-
-The Automation tab computes product statistics directly from invoice/SKU records. Units sum quantities; order frequency counts distinct orders containing the SKU. Users select the full available month or the last seven calendar days, anchored to the latest date in the dataset rather than the current date. Scores equal the selected observed count; they are not fitted model predictions. Zero-activity SKUs remain assigned with stable ID tie-breaking.
-
-The last seven days and preceding seven days are displayed separately. Percentage change is unavailable if the previous count is zero (reported as new/no activity). Insufficient preceding history is labelled. No weekday or seasonal pattern is inferred from one month.
-
-Ranked products are assigned to slots in ascending round-trip walk seconds plus level-access seconds. The proposal is previewed by replaying the same full-month orders used by Original, Baseline and Player. This in-sample comparison tests a proposed arrangement under a fixed workload; it does not measure forecasting accuracy or future demand. Apply replaces Player immutably, saves locally and supports Undo in Layout Lab.

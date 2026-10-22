@@ -9,7 +9,6 @@ An interactive browser-based warehouse slotting game built from a processed UCI 
 - Fair original, automatic fast-mover, and player-layout scoring from the same order stream.
 - Three.js warehouse with one to four articulated human pickers, distinct real orders, selectable telemetry, a follow camera, and a route overlay driven by actual scoring events.
 - Slotting Lab with all 100 products and all 252 slots, empty-slot moves, swaps, undo, reset, browser-local persistence, and JSON import/export.
-- AI Automation with observed units or distinct-order ranking, full-month or recent-week history, transparent weekly changes, proposal preview and application to player layout. This is not a trained forecast.
 - Analytics comparison and a spatial, layer-filtered rack heatmap generated from simulation events. Order charts include the return to dock.
 - A shared elapsed-time replay clock with pause/resume, restart, next event, order selection, and 1–60× speed. Handling time and the final dock return are animated and scored consistently.
 - WebGL and data-load recovery views.
@@ -44,7 +43,7 @@ npm run dev
 
 For the production preview, run `npm run build` then `npm run preview -- --host 127.0.0.1 --port 4174`. Open http://127.0.0.1:4174. The warehouse is a real Three.js scene, with no image background. Left drag or the Orbit/Pan/Zoom toolbar controls the camera; Reset restores the overview. Product categories are disclosed keyword groups inferred from descriptions, not fields supplied by UCI.
 
-Digital Twin contains operational controls, the human team and 3D replay. Layout Lab contains manual editing. Analytics contains the full-workload comparison, charts and shelf-cost breakdown. AI Automation contains history-based slotting proposals. The right-hand replay panels describe only the selected worker and order. Distance reduction replaces an undefined “route efficiency” percentage: it has a documented denominator and makes no claim of optimal routing. Edits autosave in this browser when storage is available. Export a layout to transfer it to another browser.
+Digital Twin contains operational controls, the human team and 3D replay. Layout Lab contains manual editing. Analytics contains the full-workload comparison, charts and shelf-cost breakdown. The right-hand replay panels describe only the selected worker and order. Distance reduction replaces an undefined “route efficiency” percentage: it has a documented denominator and makes no claim of optimal routing. Edits autosave in this browser when storage is available. Export a layout to transfer it to another browser.
 
 ## Verify
 
