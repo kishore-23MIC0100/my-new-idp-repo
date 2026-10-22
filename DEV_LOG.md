@@ -38,7 +38,7 @@ Last recorded full verification on 22 October 2026:
 - `npm run test:python` — 3 tests passed.
 - `npm run audit` — zero vulnerabilities reported.
 - `npm run build` — passed.
-- Team-provided Vercel URL — `https://my-new-idp-repo.vercel.app`; checked with HTTP 200. Its JSON endpoint returned 100 products and 2,339 orders. The checked-in JSON currently contains 100 products and 2,341 orders, so the live deployment and repository asset need to be synchronized before final judging.
+- Team-provided Vercel URL — `https://my-new-idp-repo-i-dev1.vercel.app/`; checked with HTTP 200. Its JSON endpoint returned 100 products and 2,339 orders. The checked-in JSON currently contains 100 products and 2,341 orders, so the live deployment and repository asset need to be synchronized before final judging.
 
 The repository includes Vercel configuration. Confirm that Git-based deployment is connected and that a fresh production deployment serves the checked-in dataset.
 
