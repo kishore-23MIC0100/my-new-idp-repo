@@ -18,6 +18,8 @@ Products are associated with a storage position but routes terminate at the adja
 
 The initial layout maps products to valid slots in stable product order. Validation requires every expected product exactly once, a valid slot for every assignment, and no duplicate occupied slots.
 
-## Current limitation
+## Integrated simulation
 
-This is the routing foundation only. Order sequencing, return-to-dock policy, picking time, and score comparison are Phase 4 work. No walking metric in the interface currently represents a completed simulation.
+The live scene, return-to-dock timeline, product editor, per-order charts and comparison cards all consume this geometry. Grid endpoints must be finite integer cells. Four-direction shortest paths avoid the rack footprints. Decorative loading equipment does not alter the route graph; trucks sit outside its bounds.
+
+Current modelling limits: fixed geometry, no congestion, no vertical retrieval penalty, one picker. Changing the exported geometry constants requires restarting the app and regenerating the route cache. See `simulation-method.md` for scoring.

@@ -1,7 +1,7 @@
-import { Grid, Line, OrbitControls, Text } from '@react-three/drei'
-import { Canvas, useFrame } from '@react-three/fiber'
-import { useMemo, useRef } from 'react'
-import type { Group } from 'three'
+import { Grid, Line, OrbitControls } from '@react-three/drei'
+import { Canvas } from '@react-three/fiber'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { CanvasTexture, Color, Matrix4, MOUSE, type InstancedMesh } from 'three'
 import { CELL_SIZE_METERS, PACKING_DOCK, RACK_BLOCKS, WAREHOUSE_SIZE, getSlot, type GridPoint, type ProductLayout } from '../../engine/warehouse'
 import type { PickEvent, Product } from '../../engine/simulation'
 
@@ -9,10 +9,9 @@ type DigitalTwinProps = {
   products: readonly Product[]
   layout: ProductLayout
   activeEvent?: PickEvent
-  playing: boolean
-  playbackSpeed: number
+  pickerPosition: GridPoint
+  cameraMode: 'orbit' | 'pan' | 'zoom'
   visibleLayer: 'all' | 1 | 2 | 3
-  photorealPlate?: boolean
   onSelectProduct: (productId: string) => void
   selectedProductId?: string
 }
@@ -23,15 +22,45 @@ const toWorld = ({ x, y }: GridPoint): [number, number, number] => [
   (y - WAREHOUSE_SIZE.height / 2) * CELL_SIZE_METERS,
 ]
 
-function Rack({ x, yStart, yEnd, id, visibleLayer, onSelect }: { x: number; yStart: number; yEnd: number; id: string; visibleLayer: DigitalTwinProps['visibleLayer']; onSelect?: () => void }) {
+function Label({ text, position, width = 2.5 }: { text: string; position: [number, number, number]; width?: number }) {
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 96
+    const ctx = canvas.getContext('2d')!
+    ctx.fillStyle = '#0a233e'; ctx.fillRect(0, 0, 256, 96)
+    ctx.strokeStyle = '#66b4da'; ctx.lineWidth = 4; ctx.strokeRect(2, 2, 252, 92)
+    ctx.fillStyle = '#dff7ff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = 'bold 48px Arial'; ctx.fillText(text, 128, 50)
+    return new CanvasTexture(canvas)
+  }, [text])
+  useEffect(() => () => texture.dispose(), [texture])
+  return <sprite position={position} scale={[width, width * 0.375, 1]}><spriteMaterial map={texture} depthTest={false} /></sprite>
+}
+
+const Cartons = memo(function Cartons({ length, visibleLayer }: { length: number; visibleLayer: DigitalTwinProps['visibleLayer'] }) {
+  const mesh = useRef<InstancedMesh>(null)
+  const placements = useMemo(() => [-1.55, -0.2, 1.15].flatMap((height, level) => visibleLayer !== 'all' && visibleLayer !== level + 1 ? [] : Array.from({ length: 28 }, (_, i) => ({ x: i % 2 ? -0.65 : 0.65, y: height + 0.46, z: -length / 2 + 0.85 + Math.floor(i / 2) * 1.45, tone: (i + level) % 5 }))), [length, visibleLayer])
+  useLayoutEffect(() => {
+    if (!mesh.current) return
+    placements.forEach((p, i) => {
+      mesh.current!.setMatrixAt(i, new Matrix4().makeTranslation(p.x, p.y, p.z))
+      mesh.current!.setColorAt(i, new Color(['#cf9a57', '#d6b179', '#ba8550', '#dfc89b', '#cdad7d'][p.tone]))
+    })
+    mesh.current.count = placements.length
+    mesh.current.instanceMatrix.needsUpdate = true
+    if (mesh.current.instanceColor) mesh.current.instanceColor.needsUpdate = true
+  }, [placements])
+  return <instancedMesh ref={mesh} args={[undefined, undefined, 84]} castShadow receiveShadow><boxGeometry args={[1.05, 0.8, 1.22]} /><meshStandardMaterial roughness={0.88} /></instancedMesh>
+})
+
+const Rack = memo(function Rack({ x, yStart, yEnd, id, visibleLayer }: { x: number; yStart: number; yEnd: number; id: string; visibleLayer: DigitalTwinProps['visibleLayer'] }) {
   const length = (yEnd - yStart + 1) * CELL_SIZE_METERS
   const [worldX, , worldZ] = toWorld({ x: x + 0.5, y: yStart + (yEnd - yStart) / 2 })
-  return <group position={[worldX, 2.15, worldZ]} onClick={(event) => { event.stopPropagation(); onSelect?.() }}>
-    {[-1.38, 1.38].flatMap((beamX) => [-length / 2 + 0.2, length / 2 - 0.2].map((beamZ) => <mesh key={`${beamX}-${beamZ}`} position={[beamX, 0, beamZ]} castShadow><boxGeometry args={[0.16, 4.5, 0.16]} /><meshStandardMaterial color="#17649a" emissive="#06315f" emissiveIntensity={0.45} metalness={0.72} roughness={0.25} /></mesh>))}
-    {[-1.55, -0.2, 1.15].map((height, levelIndex) => (visibleLayer !== 'all' && visibleLayer !== levelIndex + 1) ? null : <group key={height}><mesh position={[0, height, 0]}><boxGeometry args={[2.92, 0.13, length]} /><meshStandardMaterial color="#227cb7" emissive="#07558e" emissiveIntensity={0.36} metalness={0.7} roughness={0.26} /></mesh>{Array.from({ length: 10 }, (_, index) => <mesh key={index} position={[index % 2 ? -0.6 : 0.6, height + 0.31, -length / 2 + 0.85 + Math.floor(index / 2) * 2.7]} castShadow><boxGeometry args={[0.86, 0.5, 1.36]} /><meshStandardMaterial color={(index + Math.round(height * 2)) % 4 === 0 ? '#f18c51' : '#d9a05a'} emissive="#4a2106" emissiveIntensity={0.22} roughness={0.6} /></mesh>)}</group>)}
-    <Text position={[0, 2.38, -length / 2 - 0.55]} color="#d6efff" fontSize={0.42} anchorX="center">{id.replace('R', 'A')}</Text>
+  return <group position={[worldX, 2.15, worldZ]}>
+    {[-1.38, 1.38].flatMap((beamX) => [-length / 2 + 0.2, -6, -2, 2, 6, length / 2 - 0.2].map((beamZ) => <mesh key={`${beamX}-${beamZ}`} position={[beamX, 0, beamZ]} castShadow><boxGeometry args={[0.16, 4.5, 0.16]} /><meshStandardMaterial color="#17649a" emissive="#06315f" emissiveIntensity={0.45} metalness={0.72} roughness={0.25} /></mesh>))}
+    {[-1.55, -0.2, 1.15].map((height, levelIndex) => (visibleLayer !== 'all' && visibleLayer !== levelIndex + 1) ? null : <group key={height}><mesh position={[0, height, 0]}><boxGeometry args={[2.92, 0.13, length]} /><meshStandardMaterial color="#227cb7" emissive="#07558e" emissiveIntensity={0.36} metalness={0.7} roughness={0.26} /></mesh></group>)}
+    <Cartons length={length} visibleLayer={visibleLayer} />
+    <Label position={[0, 2.9, -length / 2 - 0.55]} text={id.replace('R', 'A')} />
   </group>
-}
+})
 
 function Truck({ position }: { position: [number, number, number] }) {
   return <group position={position}><mesh castShadow><boxGeometry args={[2.5, 1.4, 4.5]} /><meshStandardMaterial color="#d8e1e8" metalness={0.35} roughness={0.5} /></mesh><mesh position={[0, -0.25, -2.75]} castShadow><boxGeometry args={[2.5, 0.9, 1]} /><meshStandardMaterial color="#2368a5" metalness={0.45} /></mesh>{[-0.92, 0.92].flatMap((x) => [-1.5, 1.5].map((z) => <mesh key={`${x}-${z}`} position={[x, -0.8, z]} rotation={[0, Math.PI / 2, 0]}><cylinderGeometry args={[0.35, 0.35, 0.22, 12]} /><meshStandardMaterial color="#111827" /></mesh>))}</group>
@@ -41,76 +70,61 @@ function Forklift({ position }: { position: [number, number, number] }) {
   return <group position={position}><mesh castShadow><boxGeometry args={[1.05, 0.7, 1.55]} /><meshStandardMaterial color="#f2b52b" metalness={0.25} roughness={0.5} /></mesh><mesh position={[0, 0.9, 0.55]}><boxGeometry args={[0.08, 1.7, 0.08]} /><meshStandardMaterial color="#26384f" /></mesh><mesh position={[0, 0.35, 1.13]}><boxGeometry args={[0.78, 0.08, 0.08]} /><meshStandardMaterial color="#26384f" /></mesh></group>
 }
 
-function ProductBins({ products, layout, selectedProductId, activeEvent, onSelectProduct, visibleLayer, photorealPlate }: Pick<DigitalTwinProps, 'products' | 'layout' | 'selectedProductId' | 'activeEvent' | 'onSelectProduct' | 'visibleLayer' | 'photorealPlate'>) {
+const ProductBins = memo(function ProductBins({ products, layout, selectedProductId, activeEvent, onSelectProduct, visibleLayer }: Pick<DigitalTwinProps, 'products' | 'layout' | 'selectedProductId' | 'activeEvent' | 'onSelectProduct' | 'visibleLayer'>) {
   const maxFrequency = Math.max(...products.map((product) => product.pickFrequency), 1)
   return <>
     {products.map((product) => {
       const slot = getSlot(layout[product.id])
       if (!slot || (visibleLayer !== 'all' && slot.level !== visibleLayer)) return null
-      if (photorealPlate && product.id !== selectedProductId && product.id !== activeEvent?.productId) return null
       const [x, , z] = toWorld(slot.position)
       const intensity = product.pickFrequency / maxFrequency
-      const color = product.id === selectedProductId ? '#ff2cbf' : product.id === activeEvent?.productId ? '#22e875' : intensity > 0.15 ? '#00d9f5' : '#45688f'
+      const color = product.id === selectedProductId ? '#ff007a' : product.id === activeEvent?.productId ? '#ff007a' : intensity > 0.15 ? '#d5a85f' : '#b4834b'
       return <mesh key={product.id} position={[x, 0.45 + slot.level * 0.95, z]} onClick={(event) => { event.stopPropagation(); onSelectProduct(product.id) }} castShadow>
-        <boxGeometry args={photorealPlate ? [0.92, 0.7, 0.92] : [0.6, 0.45, 0.72]} />
-        <meshStandardMaterial color={color} emissive={product.id === selectedProductId ? '#8a005d' : product.id === activeEvent?.productId ? '#00683c' : '#00111b'} emissiveIntensity={photorealPlate ? 2.8 : product.id === selectedProductId ? 1.8 : 0.25} metalness={0.2} roughness={0.38} />
+        <boxGeometry args={[1.1, 0.8, 1.2]} />
+        <meshStandardMaterial color={color} emissive={product.id === selectedProductId ? '#8a005d' : product.id === activeEvent?.productId ? '#00683c' : '#00111b'} emissiveIntensity={product.id === selectedProductId ? 1.5 : 0.25} metalness={0.2} roughness={0.38} />
       </mesh>
     })}
   </>
-}
+})
 
-function Picker({ activeEvent: event, playing, playbackSpeed }: Pick<DigitalTwinProps, 'activeEvent' | 'playing' | 'playbackSpeed'>) {
-  const picker = useRef<Group>(null)
-  const route = useMemo(() => event?.route.map(toWorld) ?? [toWorld(PACKING_DOCK)], [event?.orderId, event?.productId, event?.slotId, event?.route])
-  const animation = useRef({ eventKey: '', startedAt: 0 })
-  useFrame(({ clock }) => {
-    if (!picker.current || !route.length) return
-    const eventKey = event ? `${event.orderId}-${event.productId}-${event.slotId}` : 'dock'
-    if (animation.current.eventKey !== eventKey) animation.current = { eventKey, startedAt: clock.getElapsedTime() }
-    const duration = Math.max(0.45, route.length * 0.11) / playbackSpeed
-    const progress = playing && route.length > 1 ? Math.min(1, (clock.getElapsedTime() - animation.current.startedAt) / duration) : 0
-    const pathPosition = progress * (route.length - 1)
-    const segment = Math.min(Math.floor(pathPosition), route.length - 1)
-    const nextSegment = Math.min(segment + 1, route.length - 1)
-    const amount = pathPosition - segment
-    const point = route[segment]
-    const nextPoint = route[nextSegment]
-    picker.current.position.set(point[0] + (nextPoint[0] - point[0]) * amount, 0.55, point[2] + (nextPoint[2] - point[2]) * amount)
-    if (nextSegment !== segment) picker.current.rotation.y = Math.atan2(nextPoint[0] - point[0], nextPoint[2] - point[2])
-  })
-  return <group ref={picker} position={toWorld(PACKING_DOCK)}>
-    <mesh castShadow><capsuleGeometry args={[0.28, 0.75, 6, 10]} /><meshStandardMaterial color="#ff007a" emissive="#3a001c" emissiveIntensity={0.8} /></mesh>
-    <mesh position={[0, 0.68, 0]} castShadow><sphereGeometry args={[0.25, 16, 16]} /><meshStandardMaterial color="#f2c3a0" /></mesh>
-    <pointLight color="#ff007a" intensity={2.5} distance={3} />
+function Picker({ position }: { position: GridPoint }) {
+  const [x, , z] = toWorld(position)
+  return <group position={[x, 0, z]}>
+    <mesh position={[0, 1.05, 0]} castShadow><capsuleGeometry args={[0.25, 0.5, 5, 10]} /><meshStandardMaterial color="#d9ed43" /></mesh>
+    <mesh position={[0, 1.65, 0]} castShadow><sphereGeometry args={[0.23, 12, 12]} /><meshStandardMaterial color="#f3bd87" /></mesh>
+    <mesh position={[0, 1.85, 0]}><sphereGeometry args={[0.27, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2]} /><meshStandardMaterial color="#ffd32e" /></mesh>
+    {[-0.16, 0.16].map(dx => <mesh key={dx} position={[dx, 0.4, 0]} castShadow><boxGeometry args={[0.2, 0.75, 0.25]} /><meshStandardMaterial color="#204a80" /></mesh>)}
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}><ringGeometry args={[0.45, 0.55, 24]} /><meshBasicMaterial color="#00e5ff" /></mesh>
   </group>
 }
 
-function WarehouseScene({ products, layout, activeEvent, playing, playbackSpeed, visibleLayer, photorealPlate, selectedProductId, onSelectProduct }: DigitalTwinProps) {
+function WarehouseScene({ products, layout, activeEvent, pickerPosition, cameraMode, visibleLayer, selectedProductId, onSelectProduct }: DigitalTwinProps) {
   const routePoints = useMemo(() => activeEvent?.route.map((point) => {
     const [x, y, z] = toWorld(point)
-    return [x, y + 0.13, z] as [number, number, number]
+    return [x, y + 0.36, z] as [number, number, number]
   }) ?? [], [activeEvent])
   const [dockX, , dockZ] = toWorld(PACKING_DOCK)
-  const rackProducts = useMemo(() => Object.fromEntries(products.flatMap((product) => {
-    const slot = getSlot(layout[product.id])
-    return slot ? [[slot.rackId.split('-')[0], product.id]] : []
-  })), [layout, products])
   return <>
-    {!photorealPlate && <><color attach="background" args={['#07162d']} /><fog attach="fog" args={['#07162d', 42, 94]} /></>}
-    <ambientLight intensity={photorealPlate ? 3 : 2.1} />
+    {<><color attach="background" args={['#07162d']} /><fog attach="fog" args={['#07162d', 42, 94]} /></>}
+    <ambientLight intensity={1.4} />
     <hemisphereLight color="#90d8ff" groundColor="#0b1630" intensity={1.45} />
     <directionalLight position={[18, 34, 14]} intensity={4.4} castShadow shadow-mapSize={[2048, 2048]} />
     <pointLight position={[dockX, 8, dockZ]} color="#20dfff" intensity={10} distance={28} />
-    {!photorealPlate && <><pointLight position={[10, 10, 4]} color="#2c8fff" intensity={7} distance={24} /><mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[WAREHOUSE_SIZE.width * CELL_SIZE_METERS, WAREHOUSE_SIZE.height * CELL_SIZE_METERS]} /><meshStandardMaterial color="#1a2940" roughness={0.68} metalness={0.28} /></mesh><Grid args={[WAREHOUSE_SIZE.width * CELL_SIZE_METERS, WAREHOUSE_SIZE.height * CELL_SIZE_METERS]} cellSize={CELL_SIZE_METERS} cellThickness={0.75} cellColor="#446a85" sectionSize={CELL_SIZE_METERS * 5} sectionColor="#e6c44c" fadeDistance={90} fadeStrength={0.45} position={[0, 0.01, 0]} />{RACK_BLOCKS.map((rack) => <Rack key={rack.id} {...rack} visibleLayer={visibleLayer} onSelect={rackProducts[rack.id] ? () => onSelectProduct(rackProducts[rack.id]) : undefined} />)}{[0, 1, 2].map((index) => <Truck key={index} position={[dockX - 5.2, 0.85, dockZ - 8 + index * 5.2]} />)}<Forklift position={[4, 0.45, 4]} /><Forklift position={[11, 0.45, -6]} /><group position={[dockX, 0.15, dockZ]}><mesh><boxGeometry args={[4.2, 0.25, 4.2]} /><meshStandardMaterial color="#07576a" emissive="#0087a4" emissiveIntensity={1.2} /></mesh><Text position={[0, 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]} color="#e5fdff" fontSize={0.42}>DOCK / DISPATCH</Text></group><group position={[20, 0.15, 10]}><mesh><boxGeometry args={[3.6, 0.25, 3.6]} /><meshStandardMaterial color="#0b7f55" emissive="#00a86b" emissiveIntensity={0.8} /></mesh><Text position={[0, 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]} color="#eafff5" fontSize={0.38}>PACKING</Text></group></>}
-    <ProductBins products={products} layout={layout} selectedProductId={selectedProductId} activeEvent={activeEvent} onSelectProduct={onSelectProduct} visibleLayer={visibleLayer} photorealPlate={photorealPlate} />
+    {<><pointLight position={[10, 10, 4]} color="#2c8fff" intensity={7} distance={24} /><mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[WAREHOUSE_SIZE.width * CELL_SIZE_METERS, WAREHOUSE_SIZE.height * CELL_SIZE_METERS]} /><meshStandardMaterial color="#1a2940" roughness={0.68} metalness={0.28} /></mesh><Grid args={[WAREHOUSE_SIZE.width * CELL_SIZE_METERS, WAREHOUSE_SIZE.height * CELL_SIZE_METERS]} cellSize={CELL_SIZE_METERS} cellThickness={0.75} cellColor="#446a85" sectionSize={CELL_SIZE_METERS * 5} sectionColor="#e6c44c" fadeDistance={90} fadeStrength={0.45} position={[0, 0.01, 0]} />{RACK_BLOCKS.map((rack) => <Rack key={rack.id} {...rack} visibleLayer={visibleLayer} />)}{[0, 1, 2].map((index) => <Truck key={index} position={[dockX - 6, 0.85, dockZ - 8 + index * 5.2]} />)}<Forklift position={[19.5, 0.45, -11]} /><group position={[dockX, 0.15, dockZ]}><mesh><boxGeometry args={[4.2, 0.25, 4.2]} /><meshStandardMaterial color="#07576a" emissive="#0087a4" emissiveIntensity={1.2} /></mesh><Label position={[0, 0.4, 0]} text="DOCK" width={3} /></group><group position={[20, 0.15, 10]}><mesh><boxGeometry args={[3.6, 0.25, 3.6]} /><meshStandardMaterial color="#0b7f55" emissive="#00a86b" emissiveIntensity={0.8} /></mesh><Label position={[0, 0.4, 0]} text="STAGING" width={3} /></group></>}
+    <ProductBins products={products} layout={layout} selectedProductId={selectedProductId} activeEvent={activeEvent} onSelectProduct={onSelectProduct} visibleLayer={visibleLayer} />
     {routePoints.length > 1 && <Line points={routePoints} color="#00e5ff" lineWidth={3.5} transparent opacity={0.9} />}
-    <Picker activeEvent={activeEvent} playing={playing} playbackSpeed={playbackSpeed} />
-    <OrbitControls makeDefault minDistance={18} maxDistance={70} maxPolarAngle={Math.PI / 2.1} target={[0, 0, 0]} />
+    {activeEvent?.kind === 'pick' && (() => {
+      const slot = getSlot(activeEvent.slotId)!
+      const [x, , z] = toWorld(slot.access)
+      return <group position={[x, 0, z]}><Line points={[[0, 0.2, 0], [0, 6, 0]]} color="#ff007a" lineWidth={2} /><mesh position={[0, 6, 0]}><octahedronGeometry args={[0.5]} /><meshBasicMaterial color="#ff007a" /></mesh></group>
+    })()}
+    <Picker position={pickerPosition} />
+    <OrbitControls mouseButtons={{ LEFT: cameraMode === 'pan' ? MOUSE.PAN : cameraMode === 'zoom' ? MOUSE.DOLLY : MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }} makeDefault minDistance={18} maxDistance={70} maxPolarAngle={Math.PI / 2.1} target={[0, 0, 0]} />
   </>
 }
 
 export function DigitalTwin(props: DigitalTwinProps) {
-  return <Canvas shadows camera={{ position: [26, 34, 27], fov: 38 }} dpr={[1, 1.5]} gl={{ alpha: true, toneMappingExposure: 1.7 }}>
+  return <Canvas frameloop="demand" shadows camera={{ position: [26, 29, 32], fov: 40 }} dpr={[1, 1.25]} gl={{ alpha: true, toneMappingExposure: 1.15 }}>
     <WarehouseScene {...props} />
   </Canvas>
 }

@@ -1,58 +1,8 @@
-import type { CSSProperties } from 'react'
-import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import type { LayoutComparison, SimulationResult } from '../../engine/simulation'
-import type { Product } from '../../engine/simulation'
-
-type AnalyticsViewProps = {
-  comparison: LayoutComparison
-  products: readonly Product[]
-}
-
-const formatDistance = (value: number) => `${Math.round(value).toLocaleString()} m`
-const formatTime = (value: number) => `${(value / 60).toFixed(1)} min`
-const formatPercent = (value: number | null) => value === null ? 'n.a.' : `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`
-
-function ScenarioRow({ name, result, reduction }: { name: string; result: SimulationResult; reduction: number | null }) {
-  return <tr><th>{name}</th><td>{formatDistance(result.metrics.totalWalkingDistanceMeters)}</td><td>{formatDistance(result.metrics.averageWalkingDistanceMeters)}</td><td>{formatTime(result.metrics.totalEstimatedSeconds)}</td><td>{formatTime(result.metrics.averageEstimatedSeconds)}</td><td className={reduction !== null && reduction < 0 ? 'negative' : 'positive'}>{formatPercent(reduction)}</td></tr>
-}
-
-function RackHeatmap({ result }: { result: SimulationResult }) {
-  const entries = Object.entries(result.rackVisits).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-  const max = Math.max(...entries.map(([, count]) => count), 1)
-  return <div className="heatmap-grid" aria-label="Rack visits from player-layout simulation">
-    {entries.slice(0, 24).map(([rack, count]) => <div className="heat-cell" key={rack} style={{ '--heat': count / max } as CSSProperties}><span>{rack}</span><b>{count}</b></div>)}
-  </div>
-}
-
-function orderDistances(result: SimulationResult) {
-  const totals = new Map<string, number>()
-  for (const event of result.events) totals.set(event.orderId, (totals.get(event.orderId) ?? 0) + event.travelDistanceMeters)
-  return [...totals.values()]
-}
-
-export function AnalyticsView({ comparison, products }: AnalyticsViewProps) {
-  const { original, automatic, player } = comparison
-  const originalDistances = orderDistances(original)
-  const automaticDistances = orderDistances(automatic)
-  const playerDistances = orderDistances(player)
-  const chartData = originalDistances.map((distance, index) => ({ order: index + 1, original: Math.round(distance), automatic: Math.round(automaticDistances[index] ?? 0), player: Math.round(playerDistances[index] ?? 0) }))
-  const rankedProducts = [...products].sort((a, b) => b.pickFrequency - a.pickFrequency).slice(0, 6)
-  return <section className="analytics-view" aria-label="Simulation analytics" tabIndex={-1}>
-    <div className="analytics-intro"><div><p className="eyebrow">SAME ORDERS · SAME ROUTES · DIFFERENT SLOT ASSIGNMENT</p><h2>Measured layout comparison</h2></div><p>Walking and handling time are calculated separately. Improvement uses the original layout as its denominator.</p></div>
-    <div className="analytics-summary">
-      <div><span>PLAYER WALK CHANGE</span><strong className={comparison.playerDistanceReductionPercent !== null && comparison.playerDistanceReductionPercent < 0 ? 'negative' : 'positive'}>{formatPercent(comparison.playerDistanceReductionPercent)}</strong><small>vs. original total distance</small></div>
-      <div><span>AUTO WALK CHANGE</span><strong className={comparison.automaticDistanceReductionPercent !== null && comparison.automaticDistanceReductionPercent < 0 ? 'negative' : 'positive'}>{formatPercent(comparison.automaticDistanceReductionPercent)}</strong><small>frequency-aware baseline</small></div>
-      <div><span>EXPORTED ORDERS</span><strong>{player.metrics.completedOrders.toLocaleString()}</strong><small>{player.metrics.totalItemPicks.toLocaleString()} product picks</small></div>
-      <div><span>UNITS HANDLED</span><strong>{player.metrics.totalUnitsHandled.toLocaleString()}</strong><small>same in every scenario</small></div>
-    </div>
-    <div className="analytics-grid">
-      <article className="analytics-card comparison-card"><h3>Scenario metrics</h3><div className="table-scroll"><table><thead><tr><th>Layout</th><th>Total walk</th><th>Avg. walk</th><th>Total est. time</th><th>Avg. est. time</th><th>Distance Δ</th></tr></thead><tbody><ScenarioRow name="Original" result={original} reduction={0} /><ScenarioRow name="Automatic baseline" result={automatic} reduction={comparison.automaticDistanceReductionPercent} /><ScenarioRow name="Player layout" result={player} reduction={comparison.playerDistanceReductionPercent} /></tbody></table></div><p className="method-note">Estimated time = travel time at 1.2 m/s + handling time (5 s per line + 1 s per unit).</p></article>
-      <article className="analytics-card"><h3>Player rack-visit heatmap</h3><p className="method-note">Counts come directly from scored pick events for the current player layout. Brighter cells have more visits.</p><RackHeatmap result={player} /></article>
-    </div>
-    <div className="analytics-grid explanation-grid">
-      <article className="analytics-card"><h3>Distance by order</h3><div className="distance-chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={chartData}><CartesianGrid stroke="#273650" strokeDasharray="3 3" /><XAxis dataKey="order" tick={{ fill: '#8da0b9', fontSize: 9 }} /><YAxis tick={{ fill: '#8da0b9', fontSize: 9 }} /><Tooltip contentStyle={{ background: '#0c1629', border: '1px solid #2d3c56' }} /><Legend wrapperStyle={{ fontSize: 10 }} /><Line type="monotone" dataKey="original" name="Original" stroke="#6b8caf" dot={false} /><Line type="monotone" dataKey="automatic" name="Automatic" stroke="#39e6a5" dot={false} /><Line type="monotone" dataKey="player" name="Player" stroke="#ed4eb7" dot={false} /></LineChart></ResponsiveContainer></div></article>
-      <article className="analytics-card"><h3>Fast-moving products</h3><div className="category-breakdown">{rankedProducts.map((product) => <div key={product.id}><span>{product.id}</span><b>{product.pickFrequency.toLocaleString()} units</b></div>)}</div></article>
-      <article className="analytics-card"><h3>Interpretation</h3><p>A positive percentage means less walking than the documented original layout. A negative percentage means the candidate layout worsened walking distance. Travel and handling assumptions apply unchanged to every scenario.</p></article>
-    </div>
-  </section>
+import { useState } from 'react'
+import type { LayoutComparison, Product } from '../../engine/simulation'
+import { calculateReductionPercent } from '../../engine/simulation'
+import { DistanceChart, RackHeatmap } from './Charts'
+export function AnalyticsView({ comparison, products }: { comparison: LayoutComparison; products: readonly Product[] }) {
+  const [layer, setLayer] = useState<'all' | 1 | 2 | 3>('all')
+  return <section className="analytics-view"><article className="panel"><h2>Full workload comparison <small>Same orders · same routing policy · different product locations</small></h2><div className="table-scroll"><table><thead><tr><th>Layout</th><th>Total walk</th><th>Avg. / order</th><th>Travel time</th><th>Handling time</th><th>Total est. time</th><th>Distance reduction</th></tr></thead><tbody>{(['original', 'automatic', 'player'] as const).map(key => { const m = comparison[key].metrics; const gain = calculateReductionPercent(comparison.original.metrics.totalWalkingDistanceMeters, m.totalWalkingDistanceMeters); return <tr key={key}><th>{key === 'automatic' ? 'Automatic baseline' : key === 'player' ? 'Player layout' : 'Original'}</th><td>{m.totalWalkingDistanceMeters.toLocaleString()} m</td><td>{m.averageWalkingDistanceMeters.toFixed(1)} m</td><td>{(m.totalTravelSeconds / 60).toFixed(1)} min</td><td>{(m.totalHandlingSeconds / 60).toFixed(1)} min</td><td>{(m.totalEstimatedSeconds / 60).toFixed(1)} min</td><td className={gain !== null && gain < 0 ? 'negative' : 'positive'}>{gain?.toFixed(1) ?? '—'}%</td></tr> })}</tbody></table></div><p className="method-note">{comparison.player.metrics.completedOrders.toLocaleString()} orders · {comparison.player.metrics.totalItemPicks.toLocaleString()} product picks · {comparison.player.metrics.totalUnitsHandled.toLocaleString()} units in every scenario. Estimated time is simulated, not measured warehouse labour.</p></article><div className="analytics-grid"><article className="panel"><h2>Distance by order <small>Includes return to dock</small></h2><DistanceChart comparison={comparison} /></article><article className="panel"><h2>Player rack visits<select aria-label="Analytics heatmap layer" value={layer} onChange={e => setLayer(e.target.value === 'all' ? 'all' : Number(e.target.value) as 1 | 2 | 3)}><option value="all">All layers</option>{[1, 2, 3].map(n => <option key={n} value={n}>L{n}</option>)}</select></h2><RackHeatmap result={comparison.player} layer={layer} /></article></div><div className="analytics-grid"><article className="panel explanation"><h2>Why the baseline changes distance</h2><p>Products are ranked by eligible monthly units. Slots are ranked by the actual round-trip walking distance from the dock. The most frequent product is assigned to the lowest-cost slot, with stable SKU and slot tie-breaking.</p><p>This is a frequency heuristic, not a globally optimal layout. Products ordered together can change route costs, so reductions may be negative. All results use the same nearest-next-pick A* policy.</p><h3>Highest unit frequencies</h3><div className="ranked-products">{[...products].sort((a, b) => b.pickFrequency - a.pickFrequency || a.id.localeCompare(b.id)).slice(0, 6).map(p => <div key={p.id}><span>{p.id}</span><b>{p.pickFrequency.toLocaleString()} units</b></div>)}</div></article><article className="panel explanation"><h2>Model & data assumptions</h2><p>30 × 20 grid, 1.5 m cells, six rack blocks, three shelf levels, 252 slots. Single picker at 1.2 m/s. Handling adds 5 seconds per SKU line and 1 second per unit. Shelf levels have no additional travel cost.</p><p>The source has no physical warehouse positions: the original is a disclosed lexical-SKU arrangement. Only the selected 100 products remain in each order. Empty orders, cancellations and non-positive quantities are excluded.</p><p>Heatmap cells are rack segments in their physical order. Each visit means one scored product pick, including multiple picks at the same rack. Layer filtering changes the view only.</p><p>Scope: independent orders, no batching, no congestion or multiple pickers. These optional extensions require separate assumptions and validation.</p></article></div></section>
 }

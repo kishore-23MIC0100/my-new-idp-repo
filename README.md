@@ -8,8 +8,9 @@ An interactive browser-based warehouse slotting game built from a processed UCI 
 - Deterministic A* routes that respect rack obstacles and rack-face access points.
 - Fair original, automatic fast-mover, and player-layout scoring from the same order stream.
 - Three.js warehouse with a picker and route overlay that consume actual scoring events.
-- Slotting Lab with search, product swapping, undo, reset, session-local layout persistence, and baseline application.
-- Analytics comparison and a rack-visit heatmap generated from simulation events.
+- Slotting Lab with all 100 products and all 252 slots, empty-slot moves, swaps, undo, reset, browser-local persistence, JSON import/export, and baseline application.
+- Analytics comparison and a spatial, layer-filtered rack heatmap generated from simulation events. Order charts include the return to dock.
+- A shared elapsed-time replay clock with pause/resume, restart, next event, order selection, and 1–60× speed. Handling time and the final dock return are animated and scored consistently.
 - WebGL and data-load recovery views.
 - Keyboard-focusable controls and a reduced-motion-aware interface.
 
@@ -33,35 +34,54 @@ Read the full [warehouse model](docs/warehouse-model.md) and [simulation methodo
 
 ## Run locally
 
-```bash
-npm install
+Requires Node.js 22.12+ (tested with 24.21.0). Dependencies are locked in `package-lock.json`.
+
+```powershell
+npm ci
 npm run dev
 ```
 
+For the production preview, run `npm run build` then `npm run preview -- --host 127.0.0.1 --port 4174`. Open http://127.0.0.1:4174. The warehouse is a real Three.js scene, with no image background. Left drag or the Orbit/Pan/Zoom toolbar controls the camera; Reset restores the overview. Product categories are disclosed keyword groups inferred from descriptions, not fields supplied by UCI.
+
+The six KPI cards describe the **whole scored workload**. The right panels describe **only the selected order replay**. Distance reduction replaces an undefined “route efficiency” percentage: it has a documented denominator and makes no claim of optimal routing. Edits autosave in this browser when storage is available. Export a layout to transfer it to another browser.
+
 ## Verify
 
-```bash
+```powershell
 npm run check
-npm run test
+npm run lint
+npm test
+npm run test:python
 npm run build
+npm run test:browser
 ```
+
+Python checks require `pip install -r requirements.txt`. Browser checks use Playwright Chromium (`npx playwright install chromium` if missing), start and stop their own production preview on port 4173, and save screenshots under ignored `artifacts/`. Unit tests cover data validation, routing obstacles, fair scoring, input failures, layout conservation, clock interpolation, handling, and dock return.
 
 ## Regenerate the dataset
 
 The source workbook is intentionally not committed. With an authorized local copy:
 
-```bash
-/Users/kishore/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/process_retail_data.py /path/to/online_retail_II.xlsx
+```powershell
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe scripts/process_retail_data.py D:\spm\game\online_retail_II.xlsx
 ```
+
+Outputs are deterministic and include the workbook SHA-256 hash. Timestamps retain the source UK local wall time without conversion. No customer IDs or countries are exported. Cancellation invoices, invalid/missing codes or dates, and non-finite/non-positive quantities are excluded. Missing descriptions use the first nonempty description per SKU or “Unknown product.” The report accounts for 68,617 eligible lines outside the selected product set and 525 invoices left with no selected products. Frequency means **eligible units**, while a pick means **one aggregated invoice/SKU**.
+
+Dataset attribution: Chen, D. (2012). Online Retail II [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5CG6D. Licensed CC BY 4.0; this application filters, aggregates, and maps the records to a simulated warehouse.
 
 ## Deploy
 
-The repository is Vercel-compatible. Import it into Vercel as a Vite project; the build command is `npm run build` and the output directory is `dist`.
+The application is a static export: host `dist/` on any static web server. Vercel configuration is retained; build command `npm run build`, output `dist`. The Sites project identity is tracked in `.openai/hosting.json`. Hosting status is recorded in `DEV_LOG.md`; registration alone is not a deployment.
 
 ## Limitations and next steps
 
 This MVP models a single picker, no congestion, and a nearest-next-pick order policy. Batch picking, multiple pickers, true drag-and-drop in the 3D scene, shared leaderboards, and measured warehouse calibration are future work.
 
-## Team and links
+## Architecture and demonstration
 
-Add team members, deployment URL, demo video, and development log link before final competition submission.
+Pure algorithms live in `src/engine/`, runtime data validation in `src/data/`, shared charts in `src/components/analytics/`, geometry in `src/components/warehouse/`, and the accessible editor in `src/components/layout/`. The React application coordinates immutable layouts and memoized scores. Original and baseline scores are reused during player edits. Rendering is demand-driven when playback is paused.
+
+See [DEV_LOG](DEV_LOG.md), [architecture](docs/architecture.md), and [demo guide](docs/demo-guide.md). Older historical entries in `docs/development-log.md` describe earlier snapshots; the root log records the current corrective work. Official hackathon rules, team roster, submission portal, and an uploaded presentation/video are external deliverables that have not been verified or submitted.

@@ -1,4 +1,9 @@
 node_modules/
+artifacts/
+test-results/
+playwright-report/
+.venv/
+*.zip
 dist/
 .DS_Store
 *.log

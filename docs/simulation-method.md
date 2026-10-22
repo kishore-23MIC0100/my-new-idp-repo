@@ -28,3 +28,11 @@ The engine reports total and average walking distance, travel seconds, handling 
 `((original - candidate) / original) × 100`
 
 A negative result means the candidate is worse. A zero original denominator returns an unavailable percentage rather than a misleading value.
+
+## Replay and reconciliation
+
+`events` contains product picks only and is the source for rack visits. `timeline` includes those same picks plus an explicit return-to-dock event for every order. `perOrder` includes all walking and handling. Summing its distances equals the headline distance; summing timeline segment lengths gives the same total. Tests assert both invariants against the actual dataset.
+
+The playback clock accumulates simulated seconds. Walking interpolates the actual scored waypoints at 1.2 m/s, then stays at the rack face during handling. A pick completes only after handling. Pause freezes elapsed time, and changing playback speed affects future clock increments only. The picker returns to the dock before an order is marked complete. Choosing another order restarts at its dock; orders can be selected individually.
+
+The baseline retains monthly eligible units as its declared frequency measure. This differs from invoice occurrence frequency; both definitions are valid modelling choices, but this application never substitutes one silently. Shelf access points at all three levels share horizontal travel cost. Estimated time is not a field measured in Retail II.
