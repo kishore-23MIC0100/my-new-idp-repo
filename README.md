@@ -89,11 +89,43 @@ This MVP models a single picker, no congestion, and a nearest-next-pick order po
 
 Add the official names and roles before submission. These details were not provided when this README was updated, so the fields below are intentionally left for the team to complete.
 
-| Team member name | Role / contribution | Student ID (if required) |
-| --- | --- | --- |
-| [Add full name] | [Add role] | [Add only if required] |
-| [Add full name] | [Add role] | [Add only if required] |
+### Team Roster and Individual Deliverables
 
-**Official team ID (if assigned):** [Add official team ID]
+| S. No. | Team Member | Registration / College ID | Role and Deliverables |
+|---|---|---|---|
+| 1 | Kishore S | 23MIC0100 | **Team Leader — Core Development, Digital Twin Integration, and Deployment.** Responsible for overall architecture, React and TypeScript application integration, Three.js warehouse visualization, 3D picker movement, A* pathfinding, warehouse slotting logic, simulation clock, scoring integration, GitHub management, production deployment, and final project integration. |
+| 2 | Edrina Daisy | 24BCI0210 | **Data Analytics, Simulation Validation, and User Experience.** Responsible for validating the processed UCI Online Retail II dataset, checking product and order statistics, evaluating original and optimized slotting results, verifying distance and time comparisons, testing analytics charts and rack heatmaps, validating Slotting Lab workflows, identifying UI/UX issues, and documenting test results and findings. |
+
+### Individual Deliverables
+
+#### 1. Kishore S — Team Leader
+
+- **Application Architecture:** Integrate the React, Vite, and TypeScript modules into a working application.
+- **3D Warehouse Environment:** Implement and validate warehouse geometry, rack placement, dock visualization, camera controls, and picker models.
+- **Routing and Simulation:** Integrate obstacle-aware A* routing, picker movement, order replay, handling-time calculations, and return-to-dock behavior.
+- **Slotting and Scoring:** Integrate product placement, baseline comparisons, layout editing, and consistent workload scoring.
+- **Integration and Deployment:** Maintain the GitHub repository, resolve integration issues, run production builds, and deploy the verified application to Vercel.
+- **Final Demonstration:** Coordinate the live demo, explain the system architecture, and present the technical implementation.
+
+**Expected Output:** A functional, deployable Warehouse Digital Twin with integrated 3D visualization, routing, simulation, slotting, and scoring features.
+
+#### 2. Edrina Daisy — Data Analytics and Validation
+
+- **Dataset Validation:** Verify the processed November 2011 retail data, including the 100 selected products, 2,339 orders, and consistency of order and product-pick records.
+- **Performance Evaluation:** Compare the original layout, automatic fast-mover baseline, and user-designed layouts using the same workload.
+- **Analytics Validation:** Check KPI calculations, order-level charts, rack heatmaps, route-distance comparisons, and time estimates.
+- **Functional Testing:** Test product moves, swaps, undo, reset, layout import/export, baseline application, and browser-local persistence.
+- **Quality Assurance:** Record bugs, reproduce issues, verify fixes, and check that displayed metrics agree with simulation results.
+- **Documentation and Presentation:** Prepare test evidence, summarize performance findings, and help explain the methodology, assumptions, and limitations during the hackathon demonstration.
+
+**Expected Output:** A validated dataset and analytics workflow, documented test results, verified performance comparisons, and supporting evidence for the final demonstration.
+
+### Collaboration and Shared Responsibilities
+
+Both members will review major changes, test the integrated application, prepare the final presentation, and verify that the submitted repository and live deployment match the demonstrated version.
+
+Kishore leads technical integration and deployment, while Edrina leads analytics validation, testing, and evidence preparation. Both members contribute to project reviews, issue resolution, and the final hackathon presentation.
+
+**Official team ID (22):**
 
 See [DEV_LOG.md](DEV_LOG.md) for design decisions, experiments, AI assistance, and verification results. Add the final demo recording, pitch deck, and public-post URLs here when they are ready.
