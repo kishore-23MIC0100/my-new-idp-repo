@@ -92,6 +92,7 @@ Add the official names and roles before submission. These details were not provi
 | Team member name | Role / contribution | Student ID (if required) |
 | --- | --- | --- |
 | [Add full name] | [Add role] | [Add only if required] |
+| [Add full name] | [Add role] | [Add only if required] |
 
 **Official team ID (if assigned):** [Add official team ID]
 
