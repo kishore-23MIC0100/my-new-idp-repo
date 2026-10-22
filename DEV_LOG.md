@@ -41,3 +41,13 @@ Application commit: `66bed00` (verified with `git log`). `node node_modules\@pla
 Visually reviewed `artifacts/dashboard-desktop.png` (1440 × 960) and `artifacts/dashboard-mobile.png` (390 × 2153). The reference panel composition and palette are retained. The warehouse is a stylized interactive 3D model, not the photographic rendering in the supplied reference. Browser tests run on software WebGL here; target-device GPU performance has not been benchmarked. No static warehouse image is used by the runtime.
 
 Final dataset scores observed in the rendered application: original walking 196.11 km, frequency baseline 175.99 km (10.3% reduction), same 2,339 invoices/14,042 picks/266,506 units. Original estimated time 8,335.7 min; baseline 8,056.2 min. These totals include handling all retained units and are simulation estimates.
+
+## Private publication
+
+The Sites source helper verified push and packaged commit `33e8626ef2bd5647b74c35f39a615ef958d4fee3`. Native private deployment `appgdep_6ad95eb6caa08191808f06a938859ee1` returned `succeeded` with no failure message.
+
+Live URL: https://nexai-warehouse-twin-2026.nevarsystems-info.chatgpt.site
+
+Saved version: `appgprj_6ad90ecb2b288191a9542a003a95a4a0~appgver_6c40c99cded081919a2d3efd950a55d7`. Audience remains owner-private. Deployment archive: `D:\nexai-deliverables\warehouse-site.tar.gz`. The first packaging attempt hit a Windows root-directory mkdir error; using an existing output subdirectory resolved it. The source credential was renewed when its original short-lived authorization expired. No credentials were written to the repository.
+
+This final log-only commit records publication after it happened; application/build sources are identical to the deployed commit. GitHub was not pushed or merged. Official competition submission, team roster and uploaded demo/video are not completed because the required owner-specific information was not provided. Optional batch picking, multiple pickers and congestion remain outside the implemented single-picker model.
