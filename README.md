@@ -91,3 +91,51 @@ Monthly KPIs remain aggregate worker distance/time across the entire dataset; th
 Pure algorithms live in `src/engine/`, runtime data validation in `src/data/`, shared charts in `src/components/analytics/`, geometry in `src/components/warehouse/`, and the accessible editor in `src/components/layout/`. The React application coordinates immutable layouts and memoized scores. Original and baseline scores are reused during player edits. Rendering is demand-driven when playback is paused.
 
 See [DEV_LOG](DEV_LOG.md), [architecture](docs/architecture.md), and [demo guide](docs/demo-guide.md). Older historical entries in `docs/development-log.md` describe earlier snapshots; the root log records the current corrective work. Official hackathon rules, team roster, submission portal, and an uploaded presentation/video are external deliverables that have not been verified or submitted.
+## Team Member Details — NEXAI 2026
+
+**Project:** NEXAI 2026 — Warehouse Digital Twin  
+**Problem Statement / Track:** Track 4 · AI for Supply Chain & Logistics — Warehouse Digital Twin: 3D Picking Floor Game  
+**Team Name:** VIT VELLORE  
+**Team Leader:** Kishore S  
+**College:** Vellore Institute of Technology (VIT), Vellore Campus
+
+### Team Roster and Individual Deliverables
+
+| S. No. | Team Member | Registration / College ID | Role and Deliverables |
+|---|---|---|---|
+| 1 | Kishore S | 23MIC0100 | **Team Leader — Core Development, Digital Twin Integration, and Deployment.** Responsible for overall architecture, React and TypeScript application integration, Three.js warehouse visualization, 3D picker movement, A* pathfinding, warehouse slotting logic, simulation clock, scoring integration, GitHub management, production deployment, and final project integration. |
+| 2 | Edrina Daisy | 24BCI0210 | **Data Analytics, Simulation Validation, and User Experience.** Responsible for validating the processed UCI Online Retail II dataset, checking product and order statistics, evaluating original and optimized slotting results, verifying distance and time comparisons, testing analytics charts and rack heatmaps, validating Slotting Lab workflows, identifying UI/UX issues, and documenting test results and findings. |
+
+### Individual Deliverables
+
+#### 1. Kishore S — Team Leader
+
+- **Application Architecture:** Integrate the React, Vite, and TypeScript modules into a working application.
+- **3D Warehouse Environment:** Implement and validate warehouse geometry, rack placement, dock visualization, camera controls, and picker models.
+- **Routing and Simulation:** Integrate obstacle-aware A* routing, picker movement, order replay, handling-time calculations, and return-to-dock behavior.
+- **Slotting and Scoring:** Integrate product placement, baseline comparisons, layout editing, and consistent workload scoring.
+- **Integration and Deployment:** Maintain the GitHub repository, resolve integration issues, run production builds, and deploy the verified application to Vercel.
+- **Final Demonstration:** Coordinate the live demo, explain the system architecture, and present the technical implementation.
+
+**Expected Output:** A functional, deployable Warehouse Digital Twin with integrated 3D visualization, routing, simulation, slotting, and scoring features.
+
+#### 2. Edrina Daisy — Data Analytics and Validation
+
+- **Dataset Validation:** Verify the processed November 2011 retail data, including the 100 selected products, 2,339 orders, and consistency of order and product-pick records.
+- **Performance Evaluation:** Compare the original layout, automatic fast-mover baseline, and user-designed layouts using the same workload.
+- **Analytics Validation:** Check KPI calculations, order-level charts, rack heatmaps, route-distance comparisons, and time estimates.
+- **Functional Testing:** Test product moves, swaps, undo, reset, layout import/export, baseline application, and browser-local persistence.
+- **Quality Assurance:** Record bugs, reproduce issues, verify fixes, and check that displayed metrics agree with simulation results.
+- **Documentation and Presentation:** Prepare test evidence, summarize performance findings, and help explain the methodology, assumptions, and limitations during the hackathon demonstration.
+
+**Expected Output:** A validated dataset and analytics workflow, documented test results, verified performance comparisons, and supporting evidence for the final demonstration.
+
+### Collaboration and Shared Responsibilities
+
+Both members will review major changes, test the integrated application, prepare the final presentation, and verify that the submitted repository and live deployment match the demonstrated version.
+
+Kishore leads technical integration and deployment, while Edrina leads analytics validation, testing, and evidence preparation. Both members contribute to project reviews, issue resolution, and the final hackathon presentation.
+
+### Declaration
+
+These deliverables describe the team's division of responsibilities. The team roster and registration details should match the official NEXAI 2026 registration, and the listed contributions should accurately reflect the work completed by each member.
