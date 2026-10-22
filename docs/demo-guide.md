@@ -1,7 +1,7 @@
 # Demonstration guide
 
 1. Open Digital Twin. Explain that the 2,339 orders and 14,042 picks come from the supplied November 2011 workbook. The original warehouse placement is a disclosed synthetic arrangement because UCI has no location field.
-2. Start the selected order, pause it, change speed and resume. Show the actual path and handling pause. Use Next event to reach the final return trip and 100% pick progress at the dock.
+2. Choose one to four pickers. Show the distinct order IDs in the team strip. Select each worker, use Follow picker to inspect the human model, and press Start. Pause freezes every worker and the telemetry. Next event advances to the next departure, completed pick or dock return across the team. The wave ends only after all workers return. Explain that the monthly time card is total worker time; the team strip shows elapsed wave time. Collisions and vertical travel are outside this model.
 3. Switch to Automatic baseline. Compare distance and estimated time using the unchanged workload. The baseline is a frequency heuristic, not an AI or optimality claim.
 4. Open Layout Lab, choose a SKU and empty destination, apply the move, observe rescoring, then undo. Apply the baseline, export the layout, and optionally import it again.
 5. Open Analytics. Explain separate travel and handling times, the return-inclusive chart, the spatial heatmap, and layer filtering. Export the scored results.

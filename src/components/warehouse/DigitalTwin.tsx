@@ -1,15 +1,21 @@
 import { Grid, Line, OrbitControls } from '@react-three/drei'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useThree } from '@react-three/fiber'
 import { memo, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { CanvasTexture, Color, Matrix4, MOUSE, type InstancedMesh } from 'three'
 import { CELL_SIZE_METERS, PACKING_DOCK, RACK_BLOCKS, WAREHOUSE_SIZE, getSlot, type GridPoint, type ProductLayout } from '../../engine/warehouse'
 import type { PickEvent, Product } from '../../engine/simulation'
+import type { PickerState } from '../../engine/team'
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+import { HumanPicker } from './HumanPicker'
 
 type DigitalTwinProps = {
   products: readonly Product[]
   layout: ProductLayout
   activeEvent?: PickEvent
-  pickerPosition: GridPoint
+  workers: readonly PickerState[]
+  selectedPicker: number
+  followPicker: boolean
+  onSelectPicker: (index: number) => void
   cameraMode: 'orbit' | 'pan' | 'zoom'
   visibleLayer: 'all' | 1 | 2 | 3
   onSelectProduct: (productId: string) => void
@@ -22,7 +28,7 @@ const toWorld = ({ x, y }: GridPoint): [number, number, number] => [
   (y - WAREHOUSE_SIZE.height / 2) * CELL_SIZE_METERS,
 ]
 
-function Label({ text, position, width = 2.5 }: { text: string; position: [number, number, number]; width?: number }) {
+function Label({ text, position, width = 2.5, flat = false }: { text: string; position: [number, number, number]; width?: number; flat?: boolean }) {
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 96
     const ctx = canvas.getContext('2d')!
@@ -32,6 +38,7 @@ function Label({ text, position, width = 2.5 }: { text: string; position: [numbe
     return new CanvasTexture(canvas)
   }, [text])
   useEffect(() => () => texture.dispose(), [texture])
+  if (flat) return <mesh position={position} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[width, width * 0.375]} /><meshBasicMaterial map={texture} /></mesh>
   return <sprite position={position} scale={[width, width * 0.375, 1]}><spriteMaterial map={texture} depthTest={false} /></sprite>
 }
 
@@ -87,18 +94,32 @@ const ProductBins = memo(function ProductBins({ products, layout, selectedProduc
   </>
 })
 
-function Picker({ position }: { position: GridPoint }) {
-  const [x, , z] = toWorld(position)
-  return <group position={[x, 0, z]}>
-    <mesh position={[0, 1.05, 0]} castShadow><capsuleGeometry args={[0.25, 0.5, 5, 10]} /><meshStandardMaterial color="#d9ed43" /></mesh>
-    <mesh position={[0, 1.65, 0]} castShadow><sphereGeometry args={[0.23, 12, 12]} /><meshStandardMaterial color="#f3bd87" /></mesh>
-    <mesh position={[0, 1.85, 0]}><sphereGeometry args={[0.27, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2]} /><meshStandardMaterial color="#ffd32e" /></mesh>
-    {[-0.16, 0.16].map(dx => <mesh key={dx} position={[dx, 0.4, 0]} castShadow><boxGeometry args={[0.2, 0.75, 0.25]} /><meshStandardMaterial color="#204a80" /></mesh>)}
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}><ringGeometry args={[0.45, 0.55, 24]} /><meshBasicMaterial color="#00e5ff" /></mesh>
-  </group>
+function PickerCamera({ worker, follow, cameraMode }: { worker?: PickerState; follow: boolean; cameraMode: DigitalTwinProps['cameraMode'] }) {
+  const controls = useRef<OrbitControlsImpl>(null)
+  const { camera, invalidate } = useThree()
+  const [worldX, , z] = toWorld(worker?.position ?? PACKING_DOCK)
+  const parked = worker && (worker.waiting || worker.complete || worker.localElapsed === 0)
+  const x = worldX + (parked ? (worker.id - 1) * 0.7 : 0)
+  useEffect(() => {
+    if (follow || !controls.current) return
+    camera.position.set(26, 29, 32)
+    controls.current.target.set(0, 0, 0)
+    controls.current.update()
+    invalidate()
+  }, [follow, camera, invalidate])
+  useEffect(() => {
+    if (!controls.current) return
+    if (follow) {
+      camera.position.set(x + 3.2, 3.2, z + 4.5)
+      controls.current.target.set(x, 1.05, z)
+      controls.current.update()
+      invalidate()
+    }
+  }, [follow, x, z, camera, invalidate])
+  return <OrbitControls ref={controls} enabled={!follow} mouseButtons={{ LEFT: cameraMode === 'pan' ? MOUSE.PAN : cameraMode === 'zoom' ? MOUSE.DOLLY : MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }} makeDefault minDistance={3} maxDistance={70} maxPolarAngle={Math.PI / 2.1} />
 }
 
-function WarehouseScene({ products, layout, activeEvent, pickerPosition, cameraMode, visibleLayer, selectedProductId, onSelectProduct }: DigitalTwinProps) {
+function WarehouseScene({ products, layout, activeEvent, workers, selectedPicker, followPicker, onSelectPicker, cameraMode, visibleLayer, selectedProductId, onSelectProduct }: DigitalTwinProps) {
   const routePoints = useMemo(() => activeEvent?.route.map((point) => {
     const [x, y, z] = toWorld(point)
     return [x, y + 0.36, z] as [number, number, number]
@@ -110,16 +131,25 @@ function WarehouseScene({ products, layout, activeEvent, pickerPosition, cameraM
     <hemisphereLight color="#90d8ff" groundColor="#0b1630" intensity={1.45} />
     <directionalLight position={[18, 34, 14]} intensity={4.4} castShadow shadow-mapSize={[2048, 2048]} />
     <pointLight position={[dockX, 8, dockZ]} color="#20dfff" intensity={10} distance={28} />
-    {<><pointLight position={[10, 10, 4]} color="#2c8fff" intensity={7} distance={24} /><mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[WAREHOUSE_SIZE.width * CELL_SIZE_METERS, WAREHOUSE_SIZE.height * CELL_SIZE_METERS]} /><meshStandardMaterial color="#1a2940" roughness={0.68} metalness={0.28} /></mesh><Grid args={[WAREHOUSE_SIZE.width * CELL_SIZE_METERS, WAREHOUSE_SIZE.height * CELL_SIZE_METERS]} cellSize={CELL_SIZE_METERS} cellThickness={0.75} cellColor="#446a85" sectionSize={CELL_SIZE_METERS * 5} sectionColor="#e6c44c" fadeDistance={90} fadeStrength={0.45} position={[0, 0.01, 0]} />{RACK_BLOCKS.map((rack) => <Rack key={rack.id} {...rack} visibleLayer={visibleLayer} />)}{[0, 1, 2].map((index) => <Truck key={index} position={[dockX - 6, 0.85, dockZ - 8 + index * 5.2]} />)}<Forklift position={[19.5, 0.45, -11]} /><group position={[dockX, 0.15, dockZ]}><mesh><boxGeometry args={[4.2, 0.25, 4.2]} /><meshStandardMaterial color="#07576a" emissive="#0087a4" emissiveIntensity={1.2} /></mesh><Label position={[0, 0.4, 0]} text="DOCK" width={3} /></group><group position={[20, 0.15, 10]}><mesh><boxGeometry args={[3.6, 0.25, 3.6]} /><meshStandardMaterial color="#0b7f55" emissive="#00a86b" emissiveIntensity={0.8} /></mesh><Label position={[0, 0.4, 0]} text="STAGING" width={3} /></group></>}
+    {<><pointLight position={[10, 10, 4]} color="#2c8fff" intensity={7} distance={24} /><mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[WAREHOUSE_SIZE.width * CELL_SIZE_METERS, WAREHOUSE_SIZE.height * CELL_SIZE_METERS]} /><meshStandardMaterial color="#1a2940" roughness={0.68} metalness={0.28} /></mesh><Grid args={[WAREHOUSE_SIZE.width * CELL_SIZE_METERS, WAREHOUSE_SIZE.height * CELL_SIZE_METERS]} cellSize={CELL_SIZE_METERS} cellThickness={0.75} cellColor="#446a85" sectionSize={CELL_SIZE_METERS * 5} sectionColor="#e6c44c" fadeDistance={90} fadeStrength={0.45} position={[0, 0.01, 0]} />{RACK_BLOCKS.map((rack) => <Rack key={rack.id} {...rack} visibleLayer={visibleLayer} />)}{[0, 1, 2].map((index) => <Truck key={index} position={[dockX - 6, 0.85, dockZ - 8 + index * 5.2]} />)}<Forklift position={[19.5, 0.45, -11]} /><group position={[dockX, 0.15, dockZ]}><mesh><boxGeometry args={[4.2, 0.25, 4.2]} /><meshStandardMaterial color="#07576a" emissive="#0087a4" emissiveIntensity={1.2} /></mesh><Label position={[0, 0.14, 1.45]} text="DOCK" width={1.8} flat /></group><group position={[20, 0.15, 10]}><mesh><boxGeometry args={[3.6, 0.25, 3.6]} /><meshStandardMaterial color="#0b7f55" emissive="#00a86b" emissiveIntensity={0.8} /></mesh><Label position={[0, 0.4, 0]} text="STAGING" width={3} /></group></>}
     <ProductBins products={products} layout={layout} selectedProductId={selectedProductId} activeEvent={activeEvent} onSelectProduct={onSelectProduct} visibleLayer={visibleLayer} />
-    {routePoints.length > 1 && <Line points={routePoints} color="#00e5ff" lineWidth={3.5} transparent opacity={0.9} />}
+    {routePoints.length > 1 && <Line points={routePoints} color={workers[selectedPicker]?.color ?? '#00e5ff'} lineWidth={3.5} transparent opacity={0.9} />}
     {activeEvent?.kind === 'pick' && (() => {
       const slot = getSlot(activeEvent.slotId)!
       const [x, , z] = toWorld(slot.access)
       return <group position={[x, 0, z]}><Line points={[[0, 0.2, 0], [0, 6, 0]]} color="#ff007a" lineWidth={2} /><mesh position={[0, 6, 0]}><octahedronGeometry args={[0.5]} /><meshBasicMaterial color="#ff007a" /></mesh></group>
     })()}
-    <Picker position={pickerPosition} />
-    <OrbitControls mouseButtons={{ LEFT: cameraMode === 'pan' ? MOUSE.PAN : cameraMode === 'zoom' ? MOUSE.DOLLY : MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }} makeDefault minDistance={18} maxDistance={70} maxPolarAngle={Math.PI / 2.1} target={[0, 0, 0]} />
+    {workers.map((worker, index) => {
+      const [x, , z] = toWorld(worker.position)
+      const parked = worker.waiting || worker.complete || worker.localElapsed === 0
+      const onDock = Math.abs(worker.position.x - PACKING_DOCK.x) < 1.3 && Math.abs(worker.position.y - PACKING_DOCK.y) < 1.3
+      return <group key={worker.id} position={[x + (parked ? (worker.id - 1) * 0.7 : 0), onDock ? 0.29 : 0.03, z]} onClick={event => { event.stopPropagation(); onSelectPicker(index) }}>
+        <HumanPicker worker={worker} />
+        <Label text={`P${worker.id}`} position={[0, 2.35, 0]} width={0.85} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.025, 0]}><ringGeometry args={[0.36, index === selectedPicker ? 0.47 : 0.40, 24]} /><meshBasicMaterial color={worker.color} /></mesh>
+      </group>
+    })}
+    <PickerCamera worker={workers[selectedPicker]} follow={followPicker} cameraMode={cameraMode} />
   </>
 }
 

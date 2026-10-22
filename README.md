@@ -78,7 +78,9 @@ The application is a static export: host `dist/` on any static web server. Verce
 
 ## Limitations and next steps
 
-This MVP models a single picker, no congestion, and a nearest-next-pick order policy. Batch picking, multiple pickers, true drag-and-drop in the 3D scene, shared leaderboards, and measured warehouse calibration are future work.
+The scene supports one to four articulated human workers, each assigned a different consecutive real order. A wave starts at the selected order; departures are three simulated seconds apart. The final wave uses only the remaining orders. Select a worker in the team strip or scene and use **Follow picker** for a close view. Start, pause, speed, reset and event stepping use one clock for all workers. The wave finishes after every worker returns to the dock.
+
+Monthly KPIs remain aggregate worker distance/time across the entire dataset; they do not claim a concurrency speedup. The team strip separately shows elapsed wave time. Routes use a nearest-next-pick policy and do not model congestion, worker collisions, or vertical travel. Dock parking offsets and shelf-handling gestures are visual only. Batch picking, true drag-and-drop in the 3D scene, shared leaderboards, and measured warehouse calibration remain future work. Worker geometry and portraits are procedural project assets; no external character model is downloaded.
 
 ## Architecture and demonstration
 

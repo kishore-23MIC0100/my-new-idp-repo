@@ -1,4 +1,4 @@
-import { CELL_SIZE_METERS, PACKING_DOCK, type GridPoint } from './warehouse'
+import { CELL_SIZE_METERS, PACKING_DOCK, getSlot, type GridPoint } from './warehouse'
 import { DEFAULT_SIMULATION_CONFIG, type PickEvent } from './simulation'
 
 export const eventSeconds = (event: PickEvent) => event.travelDistanceMeters / DEFAULT_SIMULATION_CONFIG.walkingSpeedMetersPerSecond + event.handlingSeconds
@@ -19,11 +19,15 @@ export function playbackAt(timeline: readonly PickEvent[], elapsed: number) {
       const b = event.route[Math.min(segment + 1, event.route.length - 1)] ?? a
       const fraction = pathIndex - segment
       const position: GridPoint = { x: a.x + (b.x - a.x) * fraction, y: a.y + (b.y - a.y) * fraction }
-      return { event, index, completedPicks, position, distance: distance + travelled, handling: travelled >= event.travelDistanceMeters, complete: false }
+      const handling = travelled >= event.travelDistanceMeters
+      const target = handling && event.kind === 'pick' ? getSlot(event.slotId)?.position : b
+      const heading = target ? Math.atan2(target.x - position.x, target.y - position.y) : 0
+      const handlingElapsed = Math.max(0, elapsed - start - event.travelDistanceMeters / DEFAULT_SIMULATION_CONFIG.walkingSpeedMetersPerSecond)
+      return { event, index, completedPicks, position, heading, handlingElapsed, distance: distance + travelled, handling, complete: false }
     }
     start += duration
     distance += event.travelDistanceMeters
     if (event.kind === 'pick') completedPicks++
   }
-  return { event: undefined, index: timeline.length, completedPicks, position: PACKING_DOCK, distance, handling: false, complete: true }
+  return { event: undefined, index: timeline.length, completedPicks, position: PACKING_DOCK, heading: 0, handlingElapsed: 0, distance, handling: false, complete: true }
 }
