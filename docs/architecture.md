@@ -15,4 +15,6 @@ Recovery: bad data presents Retry. Storage failure leaves a usable in-memory edi
 
 Scope boundaries: no shared accounts/leaderboard, stock replenishment, collision model, batch routes, calibrated retrieval equipment, or real-time warehouse integration. All remain explicit future extensions rather than implicit simulation claims.
 
+`TeamActivity.tsx` fills the space below the floor with a current-wave event feed. Its timestamps include worker departure offsets, travel, base handling and shelf access from the scored timelines. It initially shows planned completions, then the latest four completed picks/returns and the next completion. The shared clock makes pause, reset and scenario changes consistent with the 3D replay. Selecting an entry selects its picker and product.
+
 The four tabs mount only their relevant view. The 3D scene and replay controls are confined to Digital Twin; comparison tables, line chart and heatmap appear only in Analytics. Automation is implemented in `engine/automation.ts` and `components/automation/AutomationView.tsx`; it consumes the same validated orders, ranks observed activity and previews with the shared engine. Shelf-access time lives in each scored event and drives both the access-phase label and worker waiting pose.
