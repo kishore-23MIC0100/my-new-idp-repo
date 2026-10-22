@@ -75,7 +75,11 @@ python3 scripts/process_retail_data.py /path/to/online_retail_II.xlsx
 
 ## Deploy
 
-The repository is Vercel-compatible. Import it into Vercel as a Vite project; the build command is `npm run build` and the output directory is `dist`.
+**Live demo:** [https://my-new-idp-repo.vercel.app](https://my-new-idp-repo.vercel.app)
+
+**Public repository:** [https://github.com/kishore-23MIC0100/my-new-idp-repo](https://github.com/kishore-23MIC0100/my-new-idp-repo)
+
+The application is deployed on Vercel as a static Vite site. Build command: `npm run build`; output directory: `dist`. The live URL was checked on 22 October 2026 and returned HTTP 200. Its dataset endpoint also loaded successfully with 100 products and 2,339 orders. The checked-in dataset currently contains 2,341 orders; synchronize the Vercel deployment and repository data before the final demo so the displayed counts agree.
 
 ## Limitations and next steps
 
@@ -83,4 +87,12 @@ This MVP models a single picker, no congestion, and a nearest-next-pick order po
 
 ## Team and links
 
-Before submission, add your team names, deployment URL, demo video, and required track materials.
+Add the official names and roles before submission. These details were not provided when this README was updated, so the fields below are intentionally left for the team to complete.
+
+| Team member name | Role / contribution | Student ID (if required) |
+| --- | --- | --- |
+| [Add full name] | [Add role] | [Add only if required] |
+
+**Official team ID (if assigned):** [Add official team ID]
+
+See [DEV_LOG.md](DEV_LOG.md) for design decisions, experiments, AI assistance, and verification results. Add the final demo recording, pitch deck, and public-post URLs here when they are ready.
